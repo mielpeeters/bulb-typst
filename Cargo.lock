@@ -22,7 +22,9 @@ checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
 name = "bulb"
-version = "0.1.0"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ba8563c67182882340e5ba029e04e9b0191474b04f502a03e94ab935694389a"
 dependencies = [
  "image",
  "png",

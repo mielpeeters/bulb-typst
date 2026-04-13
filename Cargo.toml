@@ -12,7 +12,7 @@ panic = "abort"
 lto = true
 
 [dependencies]
-bulb = { path = "../bulb", default-features = false }
+bulb = { version = "1.0.0", default-features = false }
 wasm-minimal-protocol = "0.2"
 image = { version = "0.25.10", default-features = false, features = [
   "png",

@@ -1,0 +1,3 @@
+document name:
+  typst compile {{name}}.typ {{name}}-light.png --ppi 300
+  typst compile {{name}}.typ {{name}}-dark.png --ppi 300 --input dark=true

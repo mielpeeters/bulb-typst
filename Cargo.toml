@@ -1,0 +1,20 @@
+[package]
+name = "bulb-typst"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+strip = true
+panic = "abort"
+lto = true
+
+[dependencies]
+bulb = { path = "../bulb", default-features = false }
+wasm-minimal-protocol = "0.2"
+image = { version = "0.25.10", default-features = false, features = [
+  "png",
+  "jpeg",
+] }

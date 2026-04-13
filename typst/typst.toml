@@ -1,0 +1,7 @@
+[package]
+name = "bulb"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["Miel Peeters"]
+license = "MIT"
+description = "Image dithering plugin powered by the bulb Rust library."

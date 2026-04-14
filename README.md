@@ -2,9 +2,42 @@
 
 Bulb is a package for creating dithered images straight in [Typst](https://typst.app).
 
+## Usage
+
+The package exports a single function, `dither`. It takes raw image bytes and returns PNG bytes you can pass straight to `image()`.
+
+```typst
+#import "@preview/bulb:0.1.0": dither
+
+// Basic black & white dithering
+#image(
+  dither(
+    read("photo.png", encoding: none),
+    mode: "bw",
+    method: "cluster8",
+    size: 800,
+  ),
+)
+```
+
+### Parameters
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `data` (positional) | — | Image bytes (PNG/JPEG), via `read("...", encoding: none)` |
+| `mode` | `"rgb"` | `"bw"` (black & white), `"rgb"` (multi-level per channel), or `"palette"` (extracted palette) |
+| `method` | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
+| `size` | `none` | Max pixel size of the longest axis. `none` keeps original size |
+| `levels` | `3` | Colour levels per channel (rgb mode only) |
+| `colors` | `8` | Number of palette colours (palette mode only) |
+| `accent` | `none` | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`) |
+| `palette-method` | `"hybrid"` | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only) |
+| `linear` | `true` | Use linear light for palette selection (palette mode only) |
+| `perceptual-cap` | `false` | Cap dominant colour weight (palette mode only) |
+
 ## Examples
 
-This package exports one function, `dither`, which takes raw image bytes (jpg / png) as its first argument:
+Here's what it looks like in practice:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/eed31c30-a99b-4a0a-a3c6-b6ef5eb6321b">

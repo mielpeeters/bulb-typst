@@ -22,18 +22,18 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 
 ### Parameters
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `data` (positional) | — | Image bytes (PNG/JPEG), via `read("...", encoding: none)` |
-| `mode` | `"rgb"` | `"bw"` (black & white), `"rgb"` (multi-level per channel), or `"palette"` (extracted palette) |
-| `method` | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
-| `size` | `none` | Max pixel size of the longest axis. `none` keeps original size |
-| `levels` | `3` | Colour levels per channel (rgb mode only) |
-| `colors` | `8` | Number of palette colours (palette mode only) |
-| `accent` | `none` | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`) |
-| `palette-method` | `"hybrid"` | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only) |
-| `linear` | `true` | Use linear light for palette selection (palette mode only) |
-| `perceptual-cap` | `false` | Cap dominant colour weight (palette mode only) |
+| Parameter           | Default      | Description                                                                                                  |
+| ------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `data` (positional) | -            | Image bytes (PNG/JPEG), via `read("...", encoding: none)`                                                    |
+| `mode`              | `"rgb"`      | `"bw"` (black & white), `"rgb"` (multi-level per channel), or `"palette"` (extracted palette)                |
+| `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
+| `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                               |
+| `levels`            | `3`          | Colour levels per channel (rgb mode only)                                                                    |
+| `colors`            | `8`          | Number of palette colours (palette mode only)                                                                |
+| `accent`            | `none`       | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`)                          |
+| `palette-method`    | `"hybrid"`   | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only)                                                       |
+| `linear`            | `true`       | Use linear light for palette selection (palette mode only)                                                   |
+| `perceptual-cap`    | `false`      | Cap dominant colour weight (palette mode only)                                                               |
 
 ## Examples
 

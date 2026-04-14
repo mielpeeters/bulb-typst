@@ -34,19 +34,19 @@
   ))
 }
 
-/// Dither an image. Returns PNG bytes suitable for passing to `image()`.
-///
-/// - `data`: image bytes (PNG or JPEG), e.g. `read("photo.png", encoding: none)`
-/// - `mode`: `"bw"` (black & white), `"rgb"` (multi-level), or `"palette"` (extracted palette)
-/// - `method`: dither method — `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`,
-///   `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"`
-/// - `size`: max pixel size of the longest axis; `none` to keep original
-/// - `levels`: colour levels per channel (rgb mode only, default 3)
-/// - `colors`: total palette colours (palette mode only, default 8)
-/// - `accent`: FPS accent colours for hybrid mode (default: colors / 3)
-/// - `palette-method`: `"hybrid"`, `"fps"`, or `"kmeans"`
-/// - `linear`: linear light for palette selection (default true)
-/// - `perceptual-cap`: cap dominant colour weight (default false)
+// Dither an image. Returns PNG bytes suitable for passing to `image()`.
+//
+// - `data`: image bytes (PNG or JPEG), e.g. `read("photo.png", encoding: none)`
+// - `mode`: `"bw"` (black & white), `"rgb"` (multi-level), or `"palette"` (extracted palette)
+// - `method`: dither method — `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`,
+//   `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"`
+// - `size`: max pixel size of the longest axis; `none` to keep original
+// - `levels`: colour levels per channel (rgb mode only, default 3)
+// - `colors`: total palette colours (palette mode only, default 8)
+// - `accent`: FPS accent colours for hybrid mode (default: colors / 3)
+// - `palette-method`: `"hybrid"`, `"fps"`, or `"kmeans"`
+// - `linear`: linear light for palette selection (default true)
+// - `perceptual-cap`: cap dominant colour weight (default false)
 #let dither(
   data,
   mode: "rgb",

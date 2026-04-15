@@ -33,3 +33,7 @@ contribute version typst-packages scope="preview":
     README.md \
     "$target_dir"
   printf "\x1b[34mDone!\x1b[0m\n\n"
+
+document name:
+  cd docs && typst compile {{name}}.typ {{name}}-light.png --ppi 300
+  cd docs && typst compile {{name}}.typ {{name}}-dark.png --ppi 300 --input dark=true

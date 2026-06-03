@@ -28,6 +28,7 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | `mode`              | `"rgb"`      | `"bw"` (black & white), `"rgb"` (multi-level per channel), or `"palette"` (extracted palette)                |
 | `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
 | `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                               |
+| `filter`            | `"triangle"` | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality) |
 | `levels`            | `3`          | Colour levels per channel (rgb mode only)                                                                    |
 | `colors`            | `8`          | Number of palette colours (palette mode only)                                                                |
 | `accent`            | `none`       | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`)                          |

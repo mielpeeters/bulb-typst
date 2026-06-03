@@ -19,6 +19,14 @@
   "kmeans": 2,
 )
 
+#let _resize-filters = (
+  "nearest": 0,
+  "triangle": 1,
+  "catmull-rom": 2,
+  "gaussian": 3,
+  "lanczos3": 4,
+)
+
 #let _modes = (
   "bw": 0,
   "rgb": 1,
@@ -41,6 +49,8 @@
 // - `method`: dither method — `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`,
 //   `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"`
 // - `size`: max pixel size of the longest axis; `none` to keep original
+// - `filter`: resize filter: `"nearest"`, `"triangle"` (default), `"catmull-rom"`,
+//   `"gaussian"`, `"lanczos3"`. Nearest is fastest, Lanczos3 highest quality.
 // - `levels`: colour levels per channel (rgb mode only, default 3)
 // - `colors`: total palette colours (palette mode only, default 8)
 // - `accent`: FPS accent colours for hybrid mode (default: colors / 3)
@@ -52,6 +62,7 @@
   mode: "rgb",
   method: "bayer8x8",
   size: none,
+  filter: "triangle",
   levels: 3,
   colors: 8,
   accent: none,
@@ -67,6 +78,10 @@
   assert(
     size == none or (type(size) == int and size > 0),
     message: "size must be none or a positive integer, got " + repr(size),
+  )
+  assert(
+    filter in _resize-filters,
+    message: "unknown filter: " + repr(filter) + ", expected one of: " + repr(_resize-filters.keys()),
   )
 
   if mode == "palette" {
@@ -104,7 +119,8 @@
   let param2 = n-accent
 
   let pal-id = _palette-methods.at(palette-method)
-  let flags = (if linear { 1 } else { 0 }) + (if perceptual-cap { 2 } else { 0 })
+  let filter-id = _resize-filters.at(filter)
+  let flags = (if linear { 1 } else { 0 }) + (if perceptual-cap { 2 } else { 0 }) + filter-id * 16
 
   let header = (
     bytes((mode-id, method-id)) + _u32-le(max-size) + _u32-le(param1) + _u32-le(param2) + bytes((pal-id, flags))

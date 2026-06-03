@@ -36,7 +36,19 @@ fn load_image(bytes: &[u8]) -> Result<DynamicImage, String> {
     image::load_from_memory(bytes).map_err(|e| format!("failed to decode image: {e}"))
 }
 
-fn resize(img: DynamicImage, max_size: u32) -> DynamicImage {
+fn decode_filter(id: u8) -> Result<image::imageops::FilterType, String> {
+    use image::imageops::FilterType;
+    match id {
+        0 => Ok(FilterType::Nearest),
+        1 => Ok(FilterType::Triangle),
+        2 => Ok(FilterType::CatmullRom),
+        3 => Ok(FilterType::Gaussian),
+        4 => Ok(FilterType::Lanczos3),
+        _ => Err(format!("unknown resize filter: {id}")),
+    }
+}
+
+fn resize(img: DynamicImage, max_size: u32, filter: image::imageops::FilterType) -> DynamicImage {
     let (w, h) = (img.width(), img.height());
     if max_size == 0 || (w <= max_size && h <= max_size) {
         return img;
@@ -52,7 +64,7 @@ fn resize(img: DynamicImage, max_size: u32) -> DynamicImage {
             max_size,
         )
     };
-    img.resize_exact(nw, nh, image::imageops::FilterType::Triangle)
+    img.resize_exact(nw, nh, filter)
 }
 
 fn gray_to_rgba(gray: &GrayImage) -> RgbaImage {
@@ -106,7 +118,7 @@ fn read_u32_le(buf: &[u8], offset: usize) -> u32 {
 ///   [6..10]: param1 u32 LE (rgb: levels, palette: k)
 ///   [10..14]: param2 u32 LE (palette: n_accent)
 ///   [14]:    palette_method_id
-///   [15]:    flags (bit 0 = linear_light, bit 1 = perceptual_cap)
+///   [15]:    flags (bit 0 = linear_light, bit 1 = perceptual_cap, bits 4..7 = resize filter id)
 ///   [16..]:  image bytes
 ///
 /// Returns PNG bytes.
@@ -121,9 +133,11 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     let mode = args[0];
     let method = decode_method(args[1])?;
     let max_size = read_u32_le(args, 2);
+    let flags = args[15];
+    let filter = decode_filter((flags >> 4) & 0b0111)?;
 
     let img = load_image(&args[HEADER_LEN..])?;
-    let img = resize(img, max_size);
+    let img = resize(img, max_size, filter);
 
     match mode {
         // BW: grayscale + 2 levels, output as Luma8 PNG
@@ -147,7 +161,6 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
             let k = read_u32_le(args, 6) as usize;
             let n_accent = read_u32_le(args, 10) as usize;
             let pal_method = decode_palette_method(args[14])?;
-            let flags = args[15];
             let linear_light = flags & 1 != 0;
             let perceptual_cap = flags & 2 != 0;
 

@@ -10,6 +10,8 @@ crate-type = ["cdylib"]
 strip = true
 panic = "abort"
 lto = true
+codegen-units = 1
+opt-level = "z"
 
 [dependencies]
 bulb = { version = "1.0.0", default-features = false }

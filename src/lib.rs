@@ -126,7 +126,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     match mode {
         // BW: grayscale + 2 levels, output as Luma8 PNG
         0 => {
-            let gray = img.to_luma8();
+            let gray = img.into_luma8();
             let mut rgba = gray_to_rgba(&gray);
             ordered::dither_cpu(&mut rgba, method, 2);
             let luma = rgba_to_luma(&rgba);
@@ -134,14 +134,14 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         }
         // RGB: configurable levels per channel
         1 => {
-            let mut rgba = img.to_rgba8();
+            let mut rgba = img.into_rgba8();
             let levels = read_u32_le(args, 6);
             ordered::dither_cpu(&mut rgba, method, levels);
             encode_png_rgba(&rgba)
         }
         // Palette
         2 => {
-            let mut rgba = img.to_rgba8();
+            let mut rgba = img.into_rgba8();
             let k = read_u32_le(args, 6) as usize;
             let n_accent = read_u32_le(args, 10) as usize;
             let pal_method = decode_palette_method(args[14])?;

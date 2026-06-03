@@ -1,11 +1,10 @@
 use wasm_minimal_protocol::*;
 
 use bulb::dither::{
-    ordered,
+    DitherMethod, ordered,
     palette::{self, PaletteMethod},
-    DitherMethod,
 };
-use image::{DynamicImage, ImageBuffer, Luma, Rgba, RgbaImage};
+use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
 
 initiate_protocol!();
 
@@ -43,15 +42,20 @@ fn resize(img: DynamicImage, max_size: u32) -> DynamicImage {
         return img;
     }
     let (nw, nh) = if w >= h {
-        (max_size, (max_size as f64 * h as f64 / w as f64).round() as u32)
+        (
+            max_size,
+            (max_size as f64 * h as f64 / w as f64).round() as u32,
+        )
     } else {
-        ((max_size as f64 * w as f64 / h as f64).round() as u32, max_size)
+        (
+            (max_size as f64 * w as f64 / h as f64).round() as u32,
+            max_size,
+        )
     };
     img.resize_exact(nw, nh, image::imageops::FilterType::Triangle)
 }
 
-fn to_grayscale_rgba(img: &DynamicImage) -> RgbaImage {
-    let gray = img.to_luma8();
+fn gray_to_rgba(gray: &GrayImage) -> RgbaImage {
     let (w, h) = gray.dimensions();
     let mut rgba = RgbaImage::new(w, h);
     for (x, y, Luma([l])) in gray.enumerate_pixels() {
@@ -60,7 +64,25 @@ fn to_grayscale_rgba(img: &DynamicImage) -> RgbaImage {
     rgba
 }
 
-fn encode_png(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, String> {
+fn rgba_to_luma(rgba: &RgbaImage) -> GrayImage {
+    let (w, h) = rgba.dimensions();
+    let mut out = GrayImage::new(w, h);
+    for (src, dst) in rgba.pixels().zip(out.pixels_mut()) {
+        dst.0[0] = src.0[0];
+    }
+    out
+}
+
+fn encode_png_rgba(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, String> {
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    let mut buf = Vec::new();
+    let encoder = PngEncoder::new_with_quality(&mut buf, CompressionType::Fast, FilterType::Sub);
+    img.write_with_encoder(encoder)
+        .map_err(|e| format!("failed to encode PNG: {e}"))?;
+    Ok(buf)
+}
+
+fn encode_png_luma(img: &GrayImage) -> Result<Vec<u8>, String> {
     use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     let mut buf = Vec::new();
     let encoder = PngEncoder::new_with_quality(&mut buf, CompressionType::Fast, FilterType::Sub);
@@ -89,7 +111,9 @@ fn read_u32_le(buf: &[u8], offset: usize) -> u32 {
 #[wasm_func]
 fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     if args.len() < HEADER_LEN + 1 {
-        return Err(format!("input too short: need {HEADER_LEN}-byte header + image data"));
+        return Err(format!(
+            "input too short: need {HEADER_LEN}-byte header + image data"
+        ));
     }
 
     let mode = args[0];
@@ -99,21 +123,25 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     let img = load_image(&args[HEADER_LEN..])?;
     let img = resize(img, max_size);
 
-    let mut rgba = match mode {
-        0 => to_grayscale_rgba(&img),
-        _ => img.to_rgba8(),
-    };
-
     match mode {
-        // BW: grayscale + 2 levels
-        0 => ordered::dither_cpu(&mut rgba, method, 2),
+        // BW: grayscale + 2 levels, output as Luma8 PNG
+        0 => {
+            let gray = img.to_luma8();
+            let mut rgba = gray_to_rgba(&gray);
+            ordered::dither_cpu(&mut rgba, method, 2);
+            let luma = rgba_to_luma(&rgba);
+            encode_png_luma(&luma)
+        }
         // RGB: configurable levels per channel
         1 => {
+            let mut rgba = img.to_rgba8();
             let levels = read_u32_le(args, 6);
             ordered::dither_cpu(&mut rgba, method, levels);
+            encode_png_rgba(&rgba)
         }
         // Palette
         2 => {
+            let mut rgba = img.to_rgba8();
             let k = read_u32_le(args, 6) as usize;
             let n_accent = read_u32_le(args, 10) as usize;
             let pal_method = decode_palette_method(args[14])?;
@@ -122,7 +150,13 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
             let perceptual_cap = flags & 2 != 0;
 
             let pal = palette::extract_palette(
-                &rgba, k, n_accent, 10_000, pal_method, linear_light, perceptual_cap,
+                &rgba,
+                k,
+                n_accent,
+                10_000,
+                pal_method,
+                linear_light,
+                perceptual_cap,
             );
             if pal.len() < 2 {
                 return Err(format!(
@@ -131,9 +165,8 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 ));
             }
             palette::dither_palette(&mut rgba, &pal, method);
+            encode_png_rgba(&rgba)
         }
-        _ => return Err(format!("unknown mode: {mode}")),
+        _ => Err(format!("unknown mode: {mode}")),
     }
-
-    encode_png(&rgba)
 }

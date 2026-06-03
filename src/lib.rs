@@ -76,7 +76,8 @@ fn rgba_to_luma(rgba: &RgbaImage) -> GrayImage {
 fn encode_png_rgba(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, String> {
     use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     let mut buf = Vec::new();
-    let encoder = PngEncoder::new_with_quality(&mut buf, CompressionType::Fast, FilterType::Sub);
+    let encoder =
+        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, FilterType::Sub);
     img.write_with_encoder(encoder)
         .map_err(|e| format!("failed to encode PNG: {e}"))?;
     Ok(buf)
@@ -85,7 +86,8 @@ fn encode_png_rgba(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, Stri
 fn encode_png_luma(img: &GrayImage) -> Result<Vec<u8>, String> {
     use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     let mut buf = Vec::new();
-    let encoder = PngEncoder::new_with_quality(&mut buf, CompressionType::Fast, FilterType::Sub);
+    let encoder =
+        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, FilterType::Sub);
     img.write_with_encoder(encoder)
         .map_err(|e| format!("failed to encode PNG: {e}"))?;
     Ok(buf)

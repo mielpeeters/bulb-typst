@@ -133,6 +133,16 @@ fn read_fixed(buf: &[u8], offset: usize) -> f32 {
     read_i32_le(buf, offset) as f32 / FIXED_SCALE
 }
 
+// Negative encoded value signals None; valid threshold is >= 0.
+fn read_optional_fixed(buf: &[u8], offset: usize) -> Option<f32> {
+    let raw = read_i32_le(buf, offset);
+    if raw < 0 {
+        None
+    } else {
+        Some(raw as f32 / FIXED_SCALE)
+    }
+}
+
 /// Unified dither function.
 ///
 /// Header (38 bytes):
@@ -143,10 +153,11 @@ fn read_fixed(buf: &[u8], offset: usize) -> f32 {
 ///   [10..14]: param2 u32 LE (palette: n_accent)
 ///   [14]:     palette_method_id
 ///   [15]:     flags (bit 0 = linear_light, bit 1 = perceptual_cap, bits 4..7 = resize filter id)
-///   [16..20]: gamma f32 LE
-///   [20..24]: contrast f32 LE
-///   [24..28]: brightness f32 LE
-///   [28..32]: edge_threshold f32 LE (NaN = None, finite = Some)
+///   All four floats below are i32 LE fixed-point: stored = round(value * FIXED_SCALE).
+///   [16..20]: gamma
+///   [20..24]: contrast
+///   [24..28]: brightness
+///   [28..32]: edge_threshold (negative = None, >= 0 = Some)
 ///   [32]:     palette source (0=extract, 1=preset, 2=custom)
 ///   [33]:     preset id (0..=5, matches Preset enum order)
 ///   [34..38]: custom_palette_len u32 LE (number of RGB triples)
@@ -172,6 +183,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         contrast: read_fixed(args, 20),
         brightness: read_fixed(args, 24),
     };
+    let edge_threshold = read_optional_fixed(args, 28);
 
     let palette_source = args[32];
     let custom_palette_len = read_u32_le(args, 34) as usize;
@@ -197,7 +209,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 OrderedOptions {
                     method,
                     levels: 2,
-                    edge_threshold: None,
+                    edge_threshold,
                 },
             );
             let luma = rgba_to_luma(&rgba);
@@ -213,7 +225,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 OrderedOptions {
                     method,
                     levels,
-                    edge_threshold: None,
+                    edge_threshold,
                 },
             );
             encode_png_rgba(&rgba)
@@ -259,7 +271,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 &pal,
                 DitherOptions {
                     method,
-                    edge_threshold: None,
+                    edge_threshold,
                 },
             );
             encode_png_rgba(&rgba)

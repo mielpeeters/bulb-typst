@@ -85,6 +85,10 @@
 // - `gamma`: gamma correction applied before dithering (default 1.0, no change)
 // - `contrast`: contrast multiplier around 0.5 (default 1.0, no change)
 // - `brightness`: additive brightness offset in [-1, 1] (default 0.0, no change)
+// - `edge-threshold`: `none` (default, off) or a non-negative number.
+//   When set, pixels whose normalised Sobel gradient magnitude on luminance
+//   exceeds the threshold are snapped to the nearest level/colour (no Bayer or
+//   cluster modulation). Smaller values snap more pixels. Works in all modes.
 // - `palette`: `none` to extract (default), a preset name string
 //   (`"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`), or an array
 //   of colours. Each entry can be a hex string (`"#000000"`) or a Typst colour
@@ -105,6 +109,7 @@
   gamma: 1.0,
   contrast: 1.0,
   brightness: 0.0,
+  edge-threshold: none,
   palette: none,
 ) = {
   if mode == auto {
@@ -152,6 +157,12 @@
   assert(
     type(brightness) in (int, float) and brightness >= -1 and brightness <= 1,
     message: "brightness must be a number in [-1, 1], got " + repr(brightness),
+  )
+  assert(
+    edge-threshold == none
+      or (type(edge-threshold) in (int, float) and edge-threshold >= 0),
+    message: "edge-threshold must be none or a non-negative number, got "
+      + repr(edge-threshold),
   )
 
   if mode == "palette" {
@@ -282,7 +293,7 @@
       + _fixed-le(gamma)
       + _fixed-le(contrast)
       + _fixed-le(brightness)
-      + _u32-le(0) // edge_threshold (reserved, filled in commit 5)
+      + (if edge-threshold == none { _u32-le(4294967295) } else { _fixed-le(edge-threshold) })
       + bytes((palette-source, preset-id))
       + _u32-le(custom-palette-len)
   )

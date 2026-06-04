@@ -38,6 +38,7 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                 |
 | `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                       |
 | `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                  |
+| `edge-threshold`    | `none`       | `none` (off) or non-negative number. Snap pixels above the Sobel gradient threshold; smaller = more snapped  |
 | `palette`           | `none`       | Preset name string, or array of colours (hex strings or Typst colours, e.g. `("#000", red, rgb("#ff8800"))`). Infers `mode: "palette"` |
 
 ## Examples

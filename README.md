@@ -7,17 +7,57 @@ Bulb is a package for creating dithered images straight in [Typst](https://typst
 The package exports a single function, `dither`. It takes raw image bytes and returns PNG bytes you can pass straight to `image()`.
 
 ```typst
-#import "@preview/bulb:0.1.0": dither
+#import "@preview/bulb:0.2.0": dither
+```
 
-// Basic black & white dithering
-#image(
-  dither(
-    read("photo.png", encoding: none),
-    mode: "bw",
-    method: "cluster8",
-    size: 800,
-  ),
-)
+Black & white:
+
+```typst
+#image(dither(
+  read("photo.png", encoding: none),
+  mode: "bw",
+  method: "cluster8",
+  size: 800,
+))
+```
+
+Palette preset (mode inferred):
+
+```typst
+#image(dither(
+  read("photo.png", encoding: none),
+  palette: "gameboy",
+))
+```
+
+Custom palette with Typst colours:
+
+```typst
+#image(dither(
+  read("photo.png", encoding: none),
+  palette: (black, red, rgb("#ff8800"), white),
+))
+```
+
+Tonal pre-pass (gamma / contrast / brightness):
+
+```typst
+#image(dither(
+  read("photo.png", encoding: none),
+  gamma: 2.2,
+  contrast: 1.2,
+  brightness: -0.1,
+))
+```
+
+Edge-preserving snap (sharper silhouettes, flats stay dithered):
+
+```typst
+#image(dither(
+  read("photo.png", encoding: none),
+  palette: "pico8",
+  edge-threshold: 0.2,
+))
 ```
 
 ### Parameters
@@ -28,7 +68,7 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | `mode`              | `auto`       | `"bw"`, `"rgb"`, or `"palette"`. `auto` infers `"palette"` if `palette` is set, else `"rgb"`                 |
 | `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
 | `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                               |
-| `filter`            | `"triangle"` | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality) |
+| `filter`            | `"nearest"`  | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality) |
 | `levels`            | `3`          | Colour levels per channel (rgb mode only)                                                                    |
 | `colors`            | `8`          | Number of palette colours (palette mode only)                                                                |
 | `accent`            | `none`       | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`)                          |

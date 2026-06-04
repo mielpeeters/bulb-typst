@@ -33,6 +33,15 @@
   "palette": 2,
 )
 
+#let _presets = (
+  "gameboy": 0,
+  "nes": 1,
+  "cga": 2,
+  "pico8": 3,
+  "mac": 4,
+  "c64": 5,
+)
+
 #let _u32-le(n) = {
   bytes((
     calc.rem(n, 256),
@@ -70,6 +79,8 @@
 // - `gamma`: gamma correction applied before dithering (default 1.0, no change)
 // - `contrast`: contrast multiplier around 0.5 (default 1.0, no change)
 // - `brightness`: additive brightness offset in [-1, 1] (default 0.0, no change)
+// - `palette`: `none` to extract (default), or a preset name string:
+//   `"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`. Requires `mode: "palette"`.
 #let dither(
   data,
   mode: "rgb",
@@ -85,6 +96,7 @@
   gamma: 1.0,
   contrast: 1.0,
   brightness: 0.0,
+  palette: none,
 ) = {
   assert(
     mode in _modes,
@@ -157,21 +169,56 @@
   }
 
   if mode == "palette" {
+    if palette == none {
+      assert(
+        type(colors) == int and colors >= 2,
+        message: "colors must be an integer >= 2, got " + repr(colors),
+      )
+      assert(
+        accent == none or (type(accent) == int and accent >= 0),
+        message: "accent must be none or a non-negative integer, got "
+          + repr(accent),
+      )
+      assert(
+        palette-method in _palette-methods,
+        message: "unknown palette-method: "
+          + repr(palette-method)
+          + ", expected one of: "
+          + repr(_palette-methods.keys()),
+      )
+    } else {
+      assert(
+        type(palette) == str and palette in _presets,
+        message: "palette must be none or a preset name in "
+          + repr(_presets.keys())
+          + ", got "
+          + repr(palette),
+      )
+      assert(
+        colors == 8,
+        message: "colors is ignored when palette is given; remove it",
+      )
+      assert(
+        accent == none,
+        message: "accent is ignored when palette is given; remove it",
+      )
+      assert(
+        palette-method == "hybrid",
+        message: "palette-method is ignored when palette is given; remove it",
+      )
+      assert(
+        linear == true,
+        message: "linear is ignored when palette is given; remove it",
+      )
+      assert(
+        perceptual-cap == false,
+        message: "perceptual-cap is ignored when palette is given; remove it",
+      )
+    }
+  } else {
     assert(
-      type(colors) == int and colors >= 2,
-      message: "colors must be an integer >= 2, got " + repr(colors),
-    )
-    assert(
-      accent == none or (type(accent) == int and accent >= 0),
-      message: "accent must be none or a non-negative integer, got "
-        + repr(accent),
-    )
-    assert(
-      palette-method in _palette-methods,
-      message: "unknown palette-method: "
-        + repr(palette-method)
-        + ", expected one of: "
-        + repr(_palette-methods.keys()),
+      palette == none,
+      message: "palette requires mode: \"palette\", got mode: " + repr(mode),
     )
   }
 
@@ -191,6 +238,9 @@
       + filter-id * 16
   )
 
+  let palette-source = if palette == none { 0 } else { 1 }
+  let preset-id = if palette == none { 0 } else { _presets.at(palette) }
+
   // Header layout matches src/lib.rs. 38 bytes total.
   let header = (
     bytes((mode-id, method-id))
@@ -202,7 +252,7 @@
       + _fixed-le(contrast)
       + _fixed-le(brightness)
       + _u32-le(0) // edge_threshold (reserved, filled in commit 5)
-      + bytes((0, 0)) // palette source + preset id (reserved, commit 3)
+      + bytes((palette-source, preset-id))
       + _u32-le(0) // custom_palette_len (reserved, commit 4)
   )
 

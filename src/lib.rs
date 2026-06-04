@@ -4,6 +4,7 @@ use bulb::dither::{
     DitherMethod, adjust,
     ordered::{self, OrderedOptions},
     palette::{self, DitherOptions, PaletteMethod},
+    presets::Preset,
 };
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
 
@@ -30,6 +31,18 @@ fn decode_palette_method(id: u8) -> Result<PaletteMethod, String> {
         1 => Ok(PaletteMethod::Fps),
         2 => Ok(PaletteMethod::Kmeans),
         _ => Err(format!("unknown palette method: {id}")),
+    }
+}
+
+fn decode_preset(id: u8) -> Result<Preset, String> {
+    match id {
+        0 => Ok(Preset::GameBoy),
+        1 => Ok(Preset::Nes),
+        2 => Ok(Preset::Cga),
+        3 => Ok(Preset::Pico8),
+        4 => Ok(Preset::Mac),
+        5 => Ok(Preset::C64),
+        _ => Err(format!("unknown preset: {id}")),
     }
 }
 
@@ -199,24 +212,30 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         2 => {
             let mut rgba = img.into_rgba8();
             adjust::apply(&mut rgba, adjust_opts);
-            let k = read_u32_le(args, 6) as usize;
-            let n_accent = read_u32_le(args, 10) as usize;
-            let pal_method = decode_palette_method(args[14])?;
-            let linear_light = flags & 1 != 0;
-            let perceptual_cap = flags & 2 != 0;
-
-            let pal = palette::extract_palette(
-                &rgba,
-                k,
-                n_accent,
-                10_000,
-                pal_method,
-                linear_light,
-                perceptual_cap,
-            );
+            let palette_source = args[32];
+            let pal = match palette_source {
+                0 => {
+                    let k = read_u32_le(args, 6) as usize;
+                    let n_accent = read_u32_le(args, 10) as usize;
+                    let pal_method = decode_palette_method(args[14])?;
+                    let linear_light = flags & 1 != 0;
+                    let perceptual_cap = flags & 2 != 0;
+                    palette::extract_palette(
+                        &rgba,
+                        k,
+                        n_accent,
+                        10_000,
+                        pal_method,
+                        linear_light,
+                        perceptual_cap,
+                    )
+                }
+                1 => decode_preset(args[33])?.colors(),
+                _ => return Err(format!("unknown palette source: {palette_source}")),
+            };
             if pal.len() < 2 {
                 return Err(format!(
-                    "extracted palette too small ({} colours, need >= 2)",
+                    "palette too small ({} colours, need >= 2)",
                     pal.len()
                 ));
             }

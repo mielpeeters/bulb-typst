@@ -42,6 +42,12 @@
   "c64": 5,
 )
 
+// Convert a hex string or a Typst color into a (r, g, b) u8 triple.
+#let _to-rgb-triple(c) = {
+  let comps = rgb(c).components(alpha: false)
+  comps.map(r => int(calc.round(r / 100% * 255)))
+}
+
 #let _u32-le(n) = {
   bytes((
     calc.rem(n, 256),
@@ -79,11 +85,14 @@
 // - `gamma`: gamma correction applied before dithering (default 1.0, no change)
 // - `contrast`: contrast multiplier around 0.5 (default 1.0, no change)
 // - `brightness`: additive brightness offset in [-1, 1] (default 0.0, no change)
-// - `palette`: `none` to extract (default), or a preset name string:
-//   `"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`. Requires `mode: "palette"`.
+// - `palette`: `none` to extract (default), a preset name string
+//   (`"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`), or an array
+//   of colours. Each entry can be a hex string (`"#000000"`) or a Typst colour
+//   (`red`, `rgb("#ff8800")`, `hsl(...)`). When given, `mode` defaults to
+//   `"palette"`; passing any other explicit mode is an error.
 #let dither(
   data,
-  mode: "rgb",
+  mode: auto,
   method: "bayer8x8",
   size: none,
   filter: "nearest",
@@ -98,6 +107,15 @@
   brightness: 0.0,
   palette: none,
 ) = {
+  if mode == auto {
+    mode = if palette != none { "palette" } else { "rgb" }
+  } else if palette != none {
+    assert(
+      mode == "palette",
+      message: "palette requires mode: \"palette\" (or leave mode unset), got mode: "
+        + repr(mode),
+    )
+  }
   assert(
     mode in _modes,
     message: "unknown mode: "
@@ -188,10 +206,11 @@
       )
     } else {
       assert(
-        type(palette) == str and palette in _presets,
-        message: "palette must be none or a preset name in "
+        (type(palette) == str and palette in _presets)
+          or (type(palette) == array and palette.len() >= 2),
+        message: "palette must be none, a preset name in "
           + repr(_presets.keys())
-          + ", got "
+          + ", or an array of >= 2 hex colours, got "
           + repr(palette),
       )
       assert(
@@ -238,10 +257,22 @@
       + filter-id * 16
   )
 
-  let palette-source = if palette == none { 0 } else { 1 }
-  let preset-id = if palette == none { 0 } else { _presets.at(palette) }
+  let palette-source = 0
+  let preset-id = 0
+  let custom-palette-bytes = bytes(())
+  let custom-palette-len = 0
+  if type(palette) == str {
+    palette-source = 1
+    preset-id = _presets.at(palette)
+  } else if type(palette) == array {
+    palette-source = 2
+    custom-palette-len = palette.len()
+    for hex in palette {
+      custom-palette-bytes = custom-palette-bytes + bytes(_to-rgb-triple(hex))
+    }
+  }
 
-  // Header layout matches src/lib.rs. 38 bytes total.
+  // Header layout matches src/lib.rs. 38 bytes total + variable custom palette.
   let header = (
     bytes((mode-id, method-id))
       + _u32-le(max-size)
@@ -253,8 +284,8 @@
       + _fixed-le(brightness)
       + _u32-le(0) // edge_threshold (reserved, filled in commit 5)
       + bytes((palette-source, preset-id))
-      + _u32-le(0) // custom_palette_len (reserved, commit 4)
+      + _u32-le(custom-palette-len)
   )
 
-  _plugin.dither(header + data)
+  _plugin.dither(header + custom-palette-bytes + data)
 }

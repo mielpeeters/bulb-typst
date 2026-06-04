@@ -1,7 +1,7 @@
 use wasm_minimal_protocol::*;
 
 use bulb::dither::{
-    DitherMethod, adjust,
+    DitherMethod, adjust, custom,
     ordered::{self, OrderedOptions},
     palette::{self, DitherOptions, PaletteMethod},
     presets::Preset,
@@ -173,7 +173,17 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         brightness: read_fixed(args, 24),
     };
 
-    let img = load_image(&args[HEADER_LEN..])?;
+    let palette_source = args[32];
+    let custom_palette_len = read_u32_le(args, 34) as usize;
+    let custom_palette_bytes = 3 * custom_palette_len;
+    let image_offset = HEADER_LEN + custom_palette_bytes;
+    if args.len() < image_offset + 1 {
+        return Err(format!(
+            "input too short: header + {custom_palette_bytes}-byte palette block + image data expected"
+        ));
+    }
+
+    let img = load_image(&args[image_offset..])?;
     let img = resize(img, max_size, filter);
 
     match mode {
@@ -212,7 +222,6 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         2 => {
             let mut rgba = img.into_rgba8();
             adjust::apply(&mut rgba, adjust_opts);
-            let palette_source = args[32];
             let pal = match palette_source {
                 0 => {
                     let k = read_u32_le(args, 6) as usize;
@@ -231,6 +240,12 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                     )
                 }
                 1 => decode_preset(args[33])?.colors(),
+                2 => {
+                    let bytes = &args[HEADER_LEN..HEADER_LEN + custom_palette_bytes];
+                    let triples: Vec<[u8; 3]> =
+                        bytes.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+                    custom::palette_from_rgb(&triples)
+                }
                 _ => return Err(format!("unknown palette source: {palette_source}")),
             };
             if pal.len() < 2 {

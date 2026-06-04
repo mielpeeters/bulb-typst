@@ -25,7 +25,7 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | Parameter           | Default      | Description                                                                                                  |
 | ------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
 | `data` (positional) | -            | Image bytes (PNG/JPEG), via `read("...", encoding: none)`                                                    |
-| `mode`              | `"rgb"`      | `"bw"` (black & white), `"rgb"` (multi-level per channel), or `"palette"` (extracted palette)                |
+| `mode`              | `auto`       | `"bw"`, `"rgb"`, or `"palette"`. `auto` infers `"palette"` if `palette` is set, else `"rgb"`                 |
 | `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
 | `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                               |
 | `filter`            | `"triangle"` | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality) |
@@ -38,7 +38,7 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                 |
 | `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                       |
 | `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                  |
-| `palette`           | `none`       | Preset name (`"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`). Requires `mode: "palette"`         |
+| `palette`           | `none`       | Preset name string, or array of colours (hex strings or Typst colours, e.g. `("#000", red, rgb("#ff8800"))`). Infers `mode: "palette"` |
 
 ## Examples
 

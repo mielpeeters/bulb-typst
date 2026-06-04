@@ -22,9 +22,9 @@ checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
 name = "bulb"
-version = "1.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ba8563c67182882340e5ba029e04e9b0191474b04f502a03e94ab935694389a"
+checksum = "22fff17b1dacdfac291b6be16c5941ef334c2689bd7212b765189d108c77167a"
 dependencies = [
  "image",
  "png",
@@ -33,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "bulb-typst"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bulb",
  "image",

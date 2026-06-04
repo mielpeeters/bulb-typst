@@ -1,8 +1,9 @@
 use wasm_minimal_protocol::*;
 
 use bulb::dither::{
-    DitherMethod, ordered,
-    palette::{self, PaletteMethod},
+    DitherMethod,
+    ordered::{self, OrderedOptions},
+    palette::{self, DitherOptions, PaletteMethod},
 };
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
 
@@ -144,7 +145,14 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         0 => {
             let gray = img.into_luma8();
             let mut rgba = gray_to_rgba(&gray);
-            ordered::dither_cpu(&mut rgba, method, 2);
+            ordered::dither_cpu(
+                &mut rgba,
+                OrderedOptions {
+                    method,
+                    levels: 2,
+                    edge_threshold: None,
+                },
+            );
             let luma = rgba_to_luma(&rgba);
             encode_png_luma(&luma)
         }
@@ -152,7 +160,14 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         1 => {
             let mut rgba = img.into_rgba8();
             let levels = read_u32_le(args, 6);
-            ordered::dither_cpu(&mut rgba, method, levels);
+            ordered::dither_cpu(
+                &mut rgba,
+                OrderedOptions {
+                    method,
+                    levels,
+                    edge_threshold: None,
+                },
+            );
             encode_png_rgba(&rgba)
         }
         // Palette
@@ -179,7 +194,14 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                     pal.len()
                 ));
             }
-            palette::dither_palette(&mut rgba, &pal, method);
+            let _ = palette::dither_palette(
+                &mut rgba,
+                &pal,
+                DitherOptions {
+                    method,
+                    edge_threshold: None,
+                },
+            );
             encode_png_rgba(&rgba)
         }
         _ => Err(format!("unknown mode: {mode}")),

@@ -1,6 +1,6 @@
 [package]
 name = "bulb-typst"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 
 [lib]
@@ -19,4 +19,8 @@ wasm-minimal-protocol = "0.2"
 image = { version = "0.25.10", default-features = false, features = [
   "png",
   "jpeg",
+] }
+fast_image_resize = { version = "6", default-features = false, features = [
+  "std",
+  "only_u8x4",
 ] }

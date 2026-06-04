@@ -50,22 +50,29 @@ fn load_image(bytes: &[u8]) -> Result<DynamicImage, String> {
     image::load_from_memory(bytes).map_err(|e| format!("failed to decode image: {e}"))
 }
 
-fn decode_filter(id: u8) -> Result<image::imageops::FilterType, String> {
-    use image::imageops::FilterType;
+fn decode_filter(id: u8) -> Result<fast_image_resize::ResizeAlg, String> {
+    use fast_image_resize::{FilterType, ResizeAlg};
     match id {
-        0 => Ok(FilterType::Nearest),
-        1 => Ok(FilterType::Triangle),
-        2 => Ok(FilterType::CatmullRom),
-        3 => Ok(FilterType::Gaussian),
-        4 => Ok(FilterType::Lanczos3),
+        0 => Ok(ResizeAlg::Nearest),
+        1 => Ok(ResizeAlg::Convolution(FilterType::Bilinear)),
+        2 => Ok(ResizeAlg::Convolution(FilterType::CatmullRom)),
+        3 => Ok(ResizeAlg::Convolution(FilterType::Gaussian)),
+        4 => Ok(ResizeAlg::Convolution(FilterType::Lanczos3)),
         _ => Err(format!("unknown resize filter: {id}")),
     }
 }
 
-fn resize(img: DynamicImage, max_size: u32, filter: image::imageops::FilterType) -> DynamicImage {
+fn resize(
+    img: DynamicImage,
+    max_size: u32,
+    alg: fast_image_resize::ResizeAlg,
+) -> Result<DynamicImage, String> {
+    use fast_image_resize::images::Image;
+    use fast_image_resize::{PixelType, ResizeOptions, Resizer};
+
     let (w, h) = (img.width(), img.height());
     if max_size == 0 || (w <= max_size && h <= max_size) {
-        return img;
+        return Ok(img);
     }
     let (nw, nh) = if w >= h {
         (
@@ -78,7 +85,20 @@ fn resize(img: DynamicImage, max_size: u32, filter: image::imageops::FilterType)
             max_size,
         )
     };
-    img.resize_exact(nw, nh, filter)
+
+    let rgba = img.into_rgba8();
+    let src = Image::from_vec_u8(w, h, rgba.into_raw(), PixelType::U8x4)
+        .map_err(|e| format!("failed to build resize source: {e}"))?;
+    let mut dst = Image::new(nw, nh, PixelType::U8x4);
+
+    let mut resizer = Resizer::new();
+    resizer
+        .resize(&src, &mut dst, &ResizeOptions::new().resize_alg(alg))
+        .map_err(|e| format!("resize failed: {e}"))?;
+
+    let buf = RgbaImage::from_raw(nw, nh, dst.into_vec())
+        .ok_or_else(|| "resize produced unexpected buffer size".to_string())?;
+    Ok(DynamicImage::ImageRgba8(buf))
 }
 
 fn gray_to_rgba(gray: &GrayImage) -> RgbaImage {
@@ -196,7 +216,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     }
 
     let img = load_image(&args[image_offset..])?;
-    let img = resize(img, max_size, filter);
+    let img = resize(img, max_size, filter)?;
 
     match mode {
         // BW: grayscale + 2 levels, output as Luma8 PNG

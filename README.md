@@ -35,6 +35,9 @@ The package exports a single function, `dither`. It takes raw image bytes and re
 | `palette-method`    | `"hybrid"`   | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only)                                                       |
 | `linear`            | `true`       | Use linear light for palette selection (palette mode only)                                                   |
 | `perceptual-cap`    | `false`      | Cap dominant colour weight (palette mode only)                                                               |
+| `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                 |
+| `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                       |
+| `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                  |
 
 ## Examples
 

@@ -42,6 +42,16 @@
   ))
 }
 
+// Fixed-point scale shared with the Rust side (must match FIXED_SCALE in src/lib.rs).
+#let _fixed-scale = 10000
+
+// Encode a float as i32 little-endian after multiplying by _fixed-scale.
+#let _fixed-le(x) = {
+  let n = int(calc.round(x * _fixed-scale))
+  if n < 0 { n = n + 4294967296 }
+  _u32-le(n)
+}
+
 // Dither an image. Returns PNG bytes suitable for passing to `image()`.
 //
 // - `data`: image bytes (PNG or JPEG), e.g. `read("photo.png", encoding: none)`
@@ -49,7 +59,7 @@
 // - `method`: dither method — `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`,
 //   `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"`
 // - `size`: max pixel size of the longest axis; `none` to keep original
-// - `filter`: resize filter: `"nearest"`, `"triangle"` (default), `"catmull-rom"`,
+// - `filter`: resize filter: `"nearest"` (default), `"triangle"`, `"catmull-rom"`,
 //   `"gaussian"`, `"lanczos3"`. Nearest is fastest, Lanczos3 highest quality.
 // - `levels`: colour levels per channel (rgb mode only, default 3)
 // - `colors`: total palette colours (palette mode only, default 8)
@@ -57,23 +67,38 @@
 // - `palette-method`: `"hybrid"`, `"fps"`, or `"kmeans"`
 // - `linear`: linear light for palette selection (default true)
 // - `perceptual-cap`: cap dominant colour weight (default false)
+// - `gamma`: gamma correction applied before dithering (default 1.0, no change)
+// - `contrast`: contrast multiplier around 0.5 (default 1.0, no change)
+// - `brightness`: additive brightness offset in [-1, 1] (default 0.0, no change)
 #let dither(
   data,
   mode: "rgb",
   method: "bayer8x8",
   size: none,
-  filter: "triangle",
+  filter: "nearest",
   levels: 3,
   colors: 8,
   accent: none,
   palette-method: "hybrid",
   linear: true,
   perceptual-cap: false,
+  gamma: 1.0,
+  contrast: 1.0,
+  brightness: 0.0,
 ) = {
-  assert(mode in _modes, message: "unknown mode: " + repr(mode) + ", expected one of: " + repr(_modes.keys()))
+  assert(
+    mode in _modes,
+    message: "unknown mode: "
+      + repr(mode)
+      + ", expected one of: "
+      + repr(_modes.keys()),
+  )
   assert(
     method in _dither-methods,
-    message: "unknown method: " + repr(method) + ", expected one of: " + repr(_dither-methods.keys()),
+    message: "unknown method: "
+      + repr(method)
+      + ", expected one of: "
+      + repr(_dither-methods.keys()),
   )
   assert(
     size == none or (type(size) == int and size > 0),
@@ -81,25 +106,65 @@
   )
   assert(
     filter in _resize-filters,
-    message: "unknown filter: " + repr(filter) + ", expected one of: " + repr(_resize-filters.keys()),
+    message: "unknown filter: "
+      + repr(filter)
+      + ", expected one of: "
+      + repr(_resize-filters.keys()),
+  )
+  assert(
+    type(gamma) in (int, float) and gamma > 0,
+    message: "gamma must be a positive number, got " + repr(gamma),
+  )
+  assert(
+    type(contrast) in (int, float),
+    message: "contrast must be a number, got " + repr(contrast),
+  )
+  assert(
+    type(brightness) in (int, float) and brightness >= -1 and brightness <= 1,
+    message: "brightness must be a number in [-1, 1], got " + repr(brightness),
   )
 
   if mode == "palette" {
-    assert(levels == 3, message: "levels is not used in palette mode (did you mean colors?)")
+    assert(
+      levels == 3,
+      message: "levels is not used in palette mode (did you mean colors?)",
+    )
   } else {
-    assert(type(levels) == int and levels >= 2, message: "levels must be an integer >= 2, got " + repr(levels))
-    assert(colors == 8, message: "colors is only used in palette mode, not " + repr(mode))
-    assert(accent == none, message: "accent is only used in palette mode, not " + repr(mode))
-    assert(palette-method == "hybrid", message: "palette-method is only used in palette mode, not " + repr(mode))
-    assert(linear == true, message: "linear is only used in palette mode, not " + repr(mode))
-    assert(perceptual-cap == false, message: "perceptual-cap is only used in palette mode, not " + repr(mode))
+    assert(
+      type(levels) == int and levels >= 2,
+      message: "levels must be an integer >= 2, got " + repr(levels),
+    )
+    assert(
+      colors == 8,
+      message: "colors is only used in palette mode, not " + repr(mode),
+    )
+    assert(
+      accent == none,
+      message: "accent is only used in palette mode, not " + repr(mode),
+    )
+    assert(
+      palette-method == "hybrid",
+      message: "palette-method is only used in palette mode, not " + repr(mode),
+    )
+    assert(
+      linear == true,
+      message: "linear is only used in palette mode, not " + repr(mode),
+    )
+    assert(
+      perceptual-cap == false,
+      message: "perceptual-cap is only used in palette mode, not " + repr(mode),
+    )
   }
 
   if mode == "palette" {
-    assert(type(colors) == int and colors >= 2, message: "colors must be an integer >= 2, got " + repr(colors))
+    assert(
+      type(colors) == int and colors >= 2,
+      message: "colors must be an integer >= 2, got " + repr(colors),
+    )
     assert(
       accent == none or (type(accent) == int and accent >= 0),
-      message: "accent must be none or a non-negative integer, got " + repr(accent),
+      message: "accent must be none or a non-negative integer, got "
+        + repr(accent),
     )
     assert(
       palette-method in _palette-methods,
@@ -120,10 +185,25 @@
 
   let pal-id = _palette-methods.at(palette-method)
   let filter-id = _resize-filters.at(filter)
-  let flags = (if linear { 1 } else { 0 }) + (if perceptual-cap { 2 } else { 0 }) + filter-id * 16
+  let flags = (
+    (if linear { 1 } else { 0 })
+      + (if perceptual-cap { 2 } else { 0 })
+      + filter-id * 16
+  )
 
+  // Header layout matches src/lib.rs. 38 bytes total.
   let header = (
-    bytes((mode-id, method-id)) + _u32-le(max-size) + _u32-le(param1) + _u32-le(param2) + bytes((pal-id, flags))
+    bytes((mode-id, method-id))
+      + _u32-le(max-size)
+      + _u32-le(param1)
+      + _u32-le(param2)
+      + bytes((pal-id, flags))
+      + _fixed-le(gamma)
+      + _fixed-le(contrast)
+      + _fixed-le(brightness)
+      + _u32-le(0) // edge_threshold (reserved, filled in commit 5)
+      + bytes((0, 0)) // palette source + preset id (reserved, commit 3)
+      + _u32-le(0) // custom_palette_len (reserved, commit 4)
   )
 
   _plugin.dither(header + data)

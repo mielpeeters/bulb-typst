@@ -1,7 +1,7 @@
 use wasm_minimal_protocol::*;
 
 use bulb::dither::{
-    DitherMethod,
+    DitherMethod, adjust,
     ordered::{self, OrderedOptions},
     palette::{self, DitherOptions, PaletteMethod},
 };
@@ -9,7 +9,7 @@ use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
 
 initiate_protocol!();
 
-const HEADER_LEN: usize = 16;
+const HEADER_LEN: usize = 38;
 
 fn decode_method(id: u8) -> Result<DitherMethod, String> {
     match id {
@@ -110,17 +110,35 @@ fn read_u32_le(buf: &[u8], offset: usize) -> u32 {
     u32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap())
 }
 
+fn read_i32_le(buf: &[u8], offset: usize) -> i32 {
+    i32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap())
+}
+
+const FIXED_SCALE: f32 = 10_000.0;
+
+fn read_fixed(buf: &[u8], offset: usize) -> f32 {
+    read_i32_le(buf, offset) as f32 / FIXED_SCALE
+}
+
 /// Unified dither function.
 ///
-/// Header (16 bytes):
-///   [0]:     mode (0=bw, 1=rgb, 2=palette)
-///   [1]:     dither_method_id
-///   [2..6]:  max_size u32 LE (0 = no resize)
-///   [6..10]: param1 u32 LE (rgb: levels, palette: k)
+/// Header (38 bytes):
+///   [0]:      mode (0=bw, 1=rgb, 2=palette)
+///   [1]:      dither_method_id
+///   [2..6]:   max_size u32 LE (0 = no resize)
+///   [6..10]:  param1 u32 LE (rgb: levels, palette: k)
 ///   [10..14]: param2 u32 LE (palette: n_accent)
-///   [14]:    palette_method_id
-///   [15]:    flags (bit 0 = linear_light, bit 1 = perceptual_cap, bits 4..7 = resize filter id)
-///   [16..]:  image bytes
+///   [14]:     palette_method_id
+///   [15]:     flags (bit 0 = linear_light, bit 1 = perceptual_cap, bits 4..7 = resize filter id)
+///   [16..20]: gamma f32 LE
+///   [20..24]: contrast f32 LE
+///   [24..28]: brightness f32 LE
+///   [28..32]: edge_threshold f32 LE (NaN = None, finite = Some)
+///   [32]:     palette source (0=extract, 1=preset, 2=custom)
+///   [33]:     preset id (0..=5, matches Preset enum order)
+///   [34..38]: custom_palette_len u32 LE (number of RGB triples)
+///   [38..38+3*N]: custom palette bytes (R,G,B u8 triples), only when palette source = 2
+///   [...]:    image bytes
 ///
 /// Returns PNG bytes.
 #[wasm_func]
@@ -136,6 +154,11 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     let max_size = read_u32_le(args, 2);
     let flags = args[15];
     let filter = decode_filter((flags >> 4) & 0b0111)?;
+    let adjust_opts = adjust::Adjust {
+        gamma: read_fixed(args, 16),
+        contrast: read_fixed(args, 20),
+        brightness: read_fixed(args, 24),
+    };
 
     let img = load_image(&args[HEADER_LEN..])?;
     let img = resize(img, max_size, filter);
@@ -145,6 +168,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         0 => {
             let gray = img.into_luma8();
             let mut rgba = gray_to_rgba(&gray);
+            adjust::apply(&mut rgba, adjust_opts);
             ordered::dither_cpu(
                 &mut rgba,
                 OrderedOptions {
@@ -159,6 +183,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         // RGB: configurable levels per channel
         1 => {
             let mut rgba = img.into_rgba8();
+            adjust::apply(&mut rgba, adjust_opts);
             let levels = read_u32_le(args, 6);
             ordered::dither_cpu(
                 &mut rgba,
@@ -173,6 +198,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         // Palette
         2 => {
             let mut rgba = img.into_rgba8();
+            adjust::apply(&mut rgba, adjust_opts);
             let k = read_u32_le(args, 6) as usize;
             let n_accent = read_u32_le(args, 10) as usize;
             let pal_method = decode_palette_method(args[14])?;

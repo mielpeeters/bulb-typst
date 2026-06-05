@@ -47,7 +47,49 @@ fn decode_preset(id: u8) -> Result<Preset, String> {
 }
 
 fn load_image(bytes: &[u8]) -> Result<DynamicImage, String> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        return decode_png_fast(bytes);
+    }
     image::load_from_memory(bytes).map_err(|e| format!("failed to decode image: {e}"))
+}
+
+fn decode_png_fast(bytes: &[u8]) -> Result<DynamicImage, String> {
+    use std::io::Cursor;
+    use zune_png::PngDecoder;
+    use zune_png::zune_core::colorspace::ColorSpace;
+    use zune_png::zune_core::options::DecoderOptions;
+
+    let opts = DecoderOptions::new_fast()
+        .png_set_strip_to_8bit(true)
+        .png_set_add_alpha_channel(true);
+    let mut dec = PngDecoder::new_with_options(Cursor::new(bytes), opts);
+    let pixels = dec
+        .decode_raw()
+        .map_err(|e| format!("png decode failed: {e:?}"))?;
+    let (w, h) = dec
+        .dimensions()
+        .ok_or_else(|| "png missing dimensions".to_string())?;
+    let cs = dec
+        .colorspace()
+        .ok_or_else(|| "png missing colorspace".to_string())?;
+    let rgba = match cs {
+        ColorSpace::RGBA => pixels,
+        ColorSpace::LumaA => expand_luma_a_to_rgba(&pixels),
+        other => return Err(format!("unsupported png colorspace: {other:?}")),
+    };
+    let buf = RgbaImage::from_raw(w as u32, h as u32, rgba)
+        .ok_or_else(|| "png buffer length mismatch".to_string())?;
+    Ok(DynamicImage::ImageRgba8(buf))
+}
+
+fn expand_luma_a_to_rgba(src: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(src.len() * 2);
+    for chunk in src.chunks_exact(2) {
+        let l = chunk[0];
+        let a = chunk[1];
+        out.extend_from_slice(&[l, l, l, a]);
+    }
+    out
 }
 
 fn decode_filter(id: u8) -> Result<fast_image_resize::ResizeAlg, String> {

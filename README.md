@@ -62,23 +62,23 @@ Edge-preserving snap (sharper silhouettes, flats stay dithered):
 
 ### Parameters
 
-| Parameter           | Default      | Description                                                                                                  |
-| ------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
-| `data` (positional) | -            | Image bytes (PNG/JPEG), via `read("...", encoding: none)`                                                    |
-| `mode`              | `auto`       | `"bw"`, `"rgb"`, or `"palette"`. `auto` infers `"palette"` if `palette` is set, else `"rgb"`                 |
-| `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"` |
-| `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                               |
-| `filter`            | `"nearest"`  | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality) |
-| `levels`            | `3`          | Colour levels per channel (rgb mode only)                                                                    |
-| `colors`            | `8`          | Number of palette colours (palette mode only)                                                                |
-| `accent`            | `none`       | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`)                          |
-| `palette-method`    | `"hybrid"`   | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only)                                                       |
-| `linear`            | `true`       | Use linear light for palette selection (palette mode only)                                                   |
-| `perceptual-cap`    | `false`      | Cap dominant colour weight (palette mode only)                                                               |
-| `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                 |
-| `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                       |
-| `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                  |
-| `edge-threshold`    | `none`       | `none` (off) or non-negative number. Snap pixels above the Sobel gradient threshold; smaller = more snapped  |
+| Parameter           | Default      | Description                                                                                                                            |
+| ------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `data` (positional) | -            | Image bytes (PNG/JPEG), via `read("...", encoding: none)`                                                                              |
+| `mode`              | `auto`       | `"bw"`, `"rgb"`, or `"palette"`. `auto` infers `"palette"` if `palette` is set, else `"rgb"`                                           |
+| `method`            | `"bayer8x8"` | Dither method: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`, `"noise"`                           |
+| `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                                                         |
+| `filter`            | `"nearest"`  | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality)      |
+| `levels`            | `3`          | Colour levels per channel (rgb mode only)                                                                                              |
+| `colors`            | `8`          | Number of palette colours (palette mode only)                                                                                          |
+| `accent`            | `none`       | FPS accent colours for hybrid palette (palette mode only, defaults to `colors / 3`)                                                    |
+| `palette-method`    | `"hybrid"`   | `"hybrid"`, `"fps"`, or `"kmeans"` (palette mode only)                                                                                 |
+| `linear`            | `true`       | Use linear light for palette selection (palette mode only)                                                                             |
+| `perceptual-cap`    | `false`      | Cap dominant colour weight (palette mode only)                                                                                         |
+| `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                                           |
+| `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                                                 |
+| `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                                            |
+| `edge-threshold`    | `none`       | `none` (off) or non-negative number. Snap pixels above the Sobel gradient threshold; smaller = more snapped                            |
 | `palette`           | `none`       | Preset name string, or array of colours (hex strings or Typst colours, e.g. `("#000", red, rgb("#ff8800"))`). Infers `mode: "palette"` |
 
 ## Examples
@@ -86,16 +86,26 @@ Edge-preserving snap (sharper silhouettes, flats stay dithered):
 Here's what it looks like in practice:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/eed31c30-a99b-4a0a-a3c6-b6ef5eb6321b">
-  <img alt="Cluster BW" src="https://github.com/user-attachments/assets/1cab80b2-6473-4859-ae88-9787dd0739ba">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/3b4bfac6-e5c4-4c1c-8b0b-a93ce0295cd2">
+  <img alt="bw" src="https://github.com/user-attachments/assets/acd088b2-eee8-4dd8-8db0-9d3eadd0178c">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/28fe16c6-c333-40df-a81b-6699661dc78d">
-  <img alt="Bayer RGB" src="https://github.com/user-attachments/assets/01a1f502-32a1-4dbf-930d-70ff2dc31de1">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/97a26fa3-dd36-42fa-ad20-29d47bad8a2c">
+  <img alt="preset" src="https://github.com/user-attachments/assets/148e78f8-8034-44fe-ac53-c2e9e0439b1b">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/20a92281-980c-4493-b921-49dcfc619fa2">
-  <img alt="Bayer Palette" src="https://github.com/user-attachments/assets/d271ba24-2e3f-4915-97c3-ec3882957749">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/2d0eab30-0701-415a-b803-62c019109e35">
+  <img alt="palette" src="https://github.com/user-attachments/assets/ed21781a-f5a3-4709-9f0a-69b81ee7a5ad">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/ed97d634-3b11-4ad7-a46e-d18250afedaf">
+  <img alt="rgb" src="https://github.com/user-attachments/assets/36bcbb59-d2fd-437e-b3fc-851c38d74c59">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/3da3d70e-1ed9-4e41-ae16-a302c1e7ef01">
+  <img alt="given-palette" src="https://github.com/user-attachments/assets/5c278f87-c56f-44ac-9eb4-ab39a8817e5f">
 </picture>

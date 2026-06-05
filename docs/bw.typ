@@ -5,7 +5,7 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.1.0": dither
+  #import "@local/bulb:0.2.0": dither
 
   #figure(
     image(
@@ -14,6 +14,7 @@
         size: 800,
         mode: "bw",
         method: "cluster8",
+        contrast: 1.5,
       ),
     ),
     caption: "Clustered-dot dithering matrix in B/W",

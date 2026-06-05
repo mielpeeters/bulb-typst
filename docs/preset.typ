@@ -9,14 +9,14 @@
   #figure(
     image(
       dither(
-        read("tent.png", encoding: none),
+        read("koln.jpg", encoding: none),
         size: 500,
-        levels: 4,
-        mode: "rgb",
         method: "bayer8",
+        palette: "pico8",
+        gamma: 1.5,
       ),
     ),
-    caption: "bayer8x8 RGB channels, each with 4 levels",
+    caption: "bayer8x8 with Pico8 colours",
   )
   ```,
 )

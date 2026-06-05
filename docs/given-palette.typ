@@ -11,9 +11,8 @@
       dither(
         read("tent.png", encoding: none),
         size: 500,
-        levels: 4,
-        mode: "rgb",
-        method: "bayer8",
+        palette: (green, rgb("#c1b38f"), "#1c2500", oklch(90%, 30%, 230deg)),
+        method: "cluster4",
       ),
     ),
     caption: "bayer8x8 RGB channels, each with 4 levels",

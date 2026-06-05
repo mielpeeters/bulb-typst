@@ -5,7 +5,7 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.1.0": dither
+  #import "@local/bulb:0.2.0": dither
 
   #grid(
     columns: (1fr, 1fr),

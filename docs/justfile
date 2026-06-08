@@ -1,37 +1,11 @@
-compile:
+compile filter="":
   #!/usr/bin/env bash
   
-  find . -name "*.typ" -not -name "doc.typ" | while read -r file; do
+  find . -name "*.typ" -name "*{{filter}}*" -not -name "doc.typ" | while read -r file; do
     base="${file%.typ}"
     echo "compiling $base" >&2
-    typst compile --input='dark=false' --ppi 350 "$file" "${base}-light.png"
+    typst compile --input='dark=false' --ppi 350 "$file" "assets/${base}-light.png"
     echo "   light done" >&2
-    typst compile --input='dark=true' --ppi 350 "$file" "${base}-dark.png"
+    typst compile --input='dark=true' --ppi 350 "$file" "assets/${base}-dark.png"
     echo "   dark done" >&2
-  done
-
-get-github-links:
-  #!/usr/bin/env bash
-
-  upload() {
-    ghass $1
-  }
-
-  find . -name "*-light.png" | while read -r light; do
-    base="${light%-light.png}"
-    dark="${base}-dark.png"
-    name=$(basename "$base")
-
-    echo "uploading $light and $dark" >&2
-
-    light_url=$(upload "$light")
-    dark_url=$(upload "$dark")
-  
-    echo "${light_url}" >&2
-
-    echo "<picture>"
-    echo "  <source media=\"(prefers-color-scheme: dark)\" srcset=\"${dark_url}\">"
-    echo "  <img alt=\"${name}\" src=\"${light_url}\">"
-    echo "</picture>"
-    echo ""
   done

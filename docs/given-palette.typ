@@ -15,7 +15,7 @@
         method: "cluster4",
       ),
     ),
-    caption: "bayer8x8 RGB channels, each with 4 levels",
+    caption: "User-defined palette",
   )
   ```,
 )

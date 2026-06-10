@@ -1,12 +1,19 @@
-use wasm_minimal_protocol::*;
+use std::io::Cursor;
 
-use bulb::dither::{
+use bulb_dither::{
     DitherMethod, adjust, custom,
     ordered::{self, OrderedOptions},
     palette::{self, DitherOptions, PaletteMethod},
     presets::Preset,
 };
+use fast_image_resize::images::Image;
+use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
+use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
+use wasm_minimal_protocol::*;
+use zune_png::PngDecoder;
+use zune_png::zune_core::colorspace::ColorSpace;
+use zune_png::zune_core::options::DecoderOptions;
 
 initiate_protocol!();
 
@@ -54,11 +61,6 @@ fn load_image(bytes: &[u8]) -> Result<DynamicImage, String> {
 }
 
 fn decode_png_fast(bytes: &[u8]) -> Result<DynamicImage, String> {
-    use std::io::Cursor;
-    use zune_png::PngDecoder;
-    use zune_png::zune_core::colorspace::ColorSpace;
-    use zune_png::zune_core::options::DecoderOptions;
-
     let opts = DecoderOptions::new_fast()
         .png_set_strip_to_8bit(true)
         .png_set_add_alpha_channel(true);
@@ -93,7 +95,6 @@ fn expand_luma_a_to_rgba(src: &[u8]) -> Vec<u8> {
 }
 
 fn decode_filter(id: u8) -> Result<fast_image_resize::ResizeAlg, String> {
-    use fast_image_resize::{FilterType, ResizeAlg};
     match id {
         0 => Ok(ResizeAlg::Nearest),
         1 => Ok(ResizeAlg::Convolution(FilterType::Bilinear)),
@@ -109,9 +110,6 @@ fn resize(
     max_size: u32,
     alg: fast_image_resize::ResizeAlg,
 ) -> Result<DynamicImage, String> {
-    use fast_image_resize::images::Image;
-    use fast_image_resize::{PixelType, ResizeOptions, Resizer};
-
     let (w, h) = (img.width(), img.height());
     if max_size == 0 || (w <= max_size && h <= max_size) {
         return Ok(img);
@@ -162,20 +160,18 @@ fn rgba_to_luma(rgba: &RgbaImage) -> GrayImage {
 }
 
 fn encode_png_rgba(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> Result<Vec<u8>, String> {
-    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     let mut buf = Vec::new();
     let encoder =
-        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, FilterType::Sub);
+        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, PngFilterType::Sub);
     img.write_with_encoder(encoder)
         .map_err(|e| format!("failed to encode PNG: {e}"))?;
     Ok(buf)
 }
 
 fn encode_png_luma(img: &GrayImage) -> Result<Vec<u8>, String> {
-    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
     let mut buf = Vec::new();
     let encoder =
-        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, FilterType::Sub);
+        PngEncoder::new_with_quality(&mut buf, CompressionType::Uncompressed, PngFilterType::Sub);
     img.write_with_encoder(encoder)
         .map_err(|e| format!("failed to encode PNG: {e}"))?;
     Ok(buf)

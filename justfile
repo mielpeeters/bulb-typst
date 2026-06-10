@@ -35,12 +35,15 @@ contribute version typst-packages scope="preview":
 
   printf "\x1b[33mCopying files to ${target_dir}...\x1b[0m\n"
   mkdir -p "$target_dir"
+  mkdir -p "$target_dir/docs/assets"
   cp target/wasm32-unknown-unknown/release/bulb_typst.wasm \
     typst/typst.toml \
     typst/*.typ \
     ./LICENSE \
     README.md \
     "$target_dir"
+  cp docs/assets/* \
+    "$target_dir/docs/assets"
   printf "\x1b[34mDone!\x1b[0m\n\n"
 
 document name:

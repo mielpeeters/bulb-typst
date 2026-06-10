@@ -7,7 +7,7 @@ Bulb is a package for creating dithered images straight in [Typst](https://typst
 The package exports a single function, `dither`. It takes raw image bytes and returns PNG bytes you can pass straight to `image()`.
 
 ```typst
-#import "@preview/bulb:0.2.0": dither
+#import "@preview/bulb:0.2.1": dither
 ```
 
 Black & white:

@@ -4,7 +4,7 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.2.0": dither
+  #import "@local/bulb:0.2.1": dither
 
   #figure(
     image(

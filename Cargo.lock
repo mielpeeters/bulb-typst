@@ -21,10 +21,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
-name = "bulb"
-version = "2.0.1"
+name = "bulb-dither"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22fff17b1dacdfac291b6be16c5941ef334c2689bd7212b765189d108c77167a"
+checksum = "b308fbdc1d90fc2e636810c9230590136a8310ed1e01f2efccf2b1008c1f9b7a"
 dependencies = [
  "image",
  "png",
@@ -33,9 +33,9 @@ dependencies = [
 
 [[package]]
 name = "bulb-typst"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
- "bulb",
+ "bulb-dither",
  "fast_image_resize",
  "image",
  "wasm-minimal-protocol",

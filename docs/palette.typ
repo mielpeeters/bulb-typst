@@ -5,7 +5,7 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.2.1": dither
+  #import "@local/bulb:0.3.0": dither
 
   #grid(
     columns: (1fr, 1fr),
@@ -17,9 +17,8 @@
     figure(
       image(
         dither(
-          read("koln.jpg", encoding: none),
+          path("koln.jpg"),
           size: 200,
-          mode: "palette",
           method: "bayer4",
           colors: 15,
         ),

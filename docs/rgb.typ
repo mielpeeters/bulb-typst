@@ -4,15 +4,15 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.2.1": dither
+  #import "@local/bulb:0.3.0": dither
 
   #figure(
     image(
       dither(
-        read("tent.png", encoding: none),
+        path("tent.png"),
         size: 500,
         levels: 4,
-        mode: "rgb",
+        colors: "rgb",
         method: "bayer8",
       ),
     ),

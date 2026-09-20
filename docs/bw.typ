@@ -5,14 +5,14 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.2.1": dither
+  #import "@local/bulb:0.3.0": dither
 
   #figure(
     image(
       dither(
-        read("bromo.png", encoding: none),
+        path("bromo.png"),
         size: 800,
-        mode: "bw",
+        colors: "bw",
         method: "cluster8",
         contrast: 1.5,
       ),

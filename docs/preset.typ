@@ -4,15 +4,15 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.2.1": dither
+  #import "@local/bulb:0.3.0": dither
 
   #figure(
     image(
       dither(
-        read("koln.jpg", encoding: none),
+        path("koln.jpg"),
         size: 500,
         method: "bayer8",
-        palette: "pico8",
+        colors: "pico8",
         gamma: 1.5,
       ),
     ),

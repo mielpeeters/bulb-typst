@@ -27,7 +27,6 @@ fn decode_method(id: u8) -> Result<DitherMethod, String> {
         3 => Ok(DitherMethod::Cluster4),
         4 => Ok(DitherMethod::Cluster6),
         5 => Ok(DitherMethod::Cluster8),
-        6 => Ok(DitherMethod::Noise),
         _ => Err(format!("unknown dither method: {id}")),
     }
 }

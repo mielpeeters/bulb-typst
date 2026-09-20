@@ -7,7 +7,6 @@
   "cluster4": 3,
   "cluster6": 4,
   "cluster8": 5,
-  "noise": 6,
   "bayer2": 0,
   "bayer4": 1,
   "bayer8": 2,

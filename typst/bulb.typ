@@ -81,6 +81,7 @@
 // - `palette-method`: `"hybrid"`, `"fps"`, or `"kmeans"`
 // - `linear`: linear light for palette selection (default true)
 // - `perceptual-cap`: cap dominant colour weight (default false)
+// - `transparent`: dither alpha channel to on/off for images with an alpha channel (default true)
 // - `gamma`: gamma correction applied before dithering (default 1.0, no change)
 // - `contrast`: contrast multiplier around 0.5 (default 1.0, no change)
 // - `brightness`: additive brightness offset in [-1, 1] (default 0.0, no change)
@@ -105,6 +106,7 @@
   palette-method: "hybrid",
   linear: true,
   perceptual-cap: false,
+  transparent: true,
   gamma: 1.0,
   contrast: 1.0,
   brightness: 0.0,
@@ -262,9 +264,12 @@
   let pal-id = _palette-methods.at(palette-method)
   let filter-id = _resize-filters.at(filter)
   let flags = (
-    (if linear { 1 } else { 0 })
-      + (if perceptual-cap { 2 } else { 0 })
-      + filter-id * 16
+    (if linear { 1 } else { 0 }) // first bit is linearity
+      + (if perceptual-cap { 2 } else { 0 }) // second bit is perceptual-cap
+      + if transparent { 4 } else { 0 } // third bit is transparrency
+      // one padding bit
+      + filter-id * 16 // three filter-id bits
+    // one unused bit
   )
 
   let palette-source = 0

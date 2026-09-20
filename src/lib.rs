@@ -140,11 +140,12 @@ fn resize(
     Ok(DynamicImage::ImageRgba8(buf))
 }
 
-fn gray_to_rgba(gray: &GrayImage) -> RgbaImage {
+fn gray_to_rgba(gray: &GrayImage, src: &Option<RgbaImage>) -> RgbaImage {
     let (w, h) = gray.dimensions();
     let mut rgba = RgbaImage::new(w, h);
     for (x, y, Luma([l])) in gray.enumerate_pixels() {
-        rgba.put_pixel(x, y, Rgba([*l, *l, *l, 255]));
+        let alpha = src.as_ref().map_or(255, |s| s.get_pixel(x, y).0[3]);
+        rgba.put_pixel(x, y, Rgba([*l, *l, *l, alpha]));
     }
     rgba
 }
@@ -258,8 +259,9 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     match mode {
         // BW: grayscale + 2 levels, output as Luma8 PNG
         0 => {
+            let src = (flags & 4 != 0).then(|| img.to_rgba8());
             let gray = img.into_luma8();
-            let mut rgba = gray_to_rgba(&gray);
+            let mut rgba = gray_to_rgba(&gray, &src);
             adjust::apply(&mut rgba, adjust_opts);
             ordered::dither_cpu(
                 &mut rgba,
@@ -267,10 +269,15 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                     method,
                     levels: 2,
                     edge_threshold,
+                    dither_alpha: flags & 4 != 0,
                 },
             );
-            let luma = rgba_to_luma(&rgba);
-            encode_png_luma(&luma)
+            if flags & 4 != 0 {
+                encode_png_rgba(&rgba)
+            } else {
+                let luma = rgba_to_luma(&rgba);
+                encode_png_luma(&luma)
+            }
         }
         // RGB: configurable levels per channel
         1 => {
@@ -283,6 +290,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                     method,
                     levels,
                     edge_threshold,
+                    dither_alpha: flags & 4 != 0,
                 },
             );
             encode_png_rgba(&rgba)
@@ -333,6 +341,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 DitherOptions {
                     method,
                     edge_threshold,
+                    dither_alpha: flags & 4 != 0,
                 },
             );
             encode_png_rgba(&rgba)

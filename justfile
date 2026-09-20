@@ -47,5 +47,12 @@ contribute version typst-packages scope="preview":
   printf "\x1b[34mDone!\x1b[0m\n\n"
 
 document name:
-  cd docs && typst compile {{name}}.typ {{name}}-light.png --ppi 300
-  cd docs && typst compile {{name}}.typ {{name}}-dark.png --ppi 300 --input dark=true
+  cd docs && typst compile {{name}}.typ assets/{{name}}-light.png --ppi 300
+  cd docs && typst compile {{name}}.typ assets/{{name}}-dark.png --ppi 300 --input dark=true
+
+document-all:
+  @just document bw
+  @just document palette
+  @just document given-palette
+  @just document rgb
+  @just document preset

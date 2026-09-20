@@ -204,13 +204,13 @@ fn read_optional_fixed(buf: &[u8], offset: usize) -> Option<f32> {
 /// Unified dither function.
 ///
 /// Header (38 bytes):
-///   [0]:      mode (0=bw, 1=rgb, 2=palette)
+///   [0]:      colour target (0=bw, 1=rgb, 2=palette)
 ///   [1]:      dither_method_id
 ///   [2..6]:   max_size u32 LE (0 = no resize)
 ///   [6..10]:  param1 u32 LE (rgb: levels, palette: k)
 ///   [10..14]: param2 u32 LE (palette: n_accent)
 ///   [14]:     palette_method_id
-///   [15]:     flags (bit 0 = linear_light, bit 1 = perceptual_cap, bits 4..7 = resize filter id)
+///   [15]:     flags (bit 0 = linear_light, bit 1 = perceptual_cap, bit 2 = transparency, bits 4..7 = resize filter id)
 ///   All four floats below are i32 LE fixed-point: stored = round(value * FIXED_SCALE).
 ///   [16..20]: gamma
 ///   [20..24]: contrast
@@ -231,7 +231,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
         ));
     }
 
-    let mode = args[0];
+    let target = args[0];
     let method = decode_method(args[1])?;
     let max_size = read_u32_le(args, 2);
     let flags = args[15];
@@ -256,7 +256,7 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
     let img = load_image(&args[image_offset..])?;
     let img = resize(img, max_size, filter)?;
 
-    match mode {
+    match target {
         // BW: grayscale + 2 levels, output as Luma8 PNG
         0 => {
             let src = (flags & 4 != 0).then(|| img.to_rgba8());
@@ -346,6 +346,6 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
             );
             encode_png_rgba(&rgba)
         }
-        _ => Err(format!("unknown mode: {mode}")),
+        _ => Err(format!("unknown colour target: {target}")),
     }
 }

@@ -85,7 +85,7 @@ fn decode_png_fast(bytes: &[u8]) -> Result<DynamicImage, String> {
 
 fn expand_luma_a_to_rgba(src: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(src.len() * 2);
-    for chunk in src.chunks_exact(2) {
+    for chunk in src.as_chunks::<2>().0 {
         let l = chunk[0];
         let a = chunk[1];
         out.extend_from_slice(&[l, l, l, a]);
@@ -311,8 +311,12 @@ fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
                 1 => decode_preset(args[33])?.colors(),
                 2 => {
                     let bytes = &args[HEADER_LEN..HEADER_LEN + custom_palette_bytes];
-                    let triples: Vec<[u8; 3]> =
-                        bytes.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+                    let triples: Vec<[u8; 3]> = bytes
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
+                        .map(|c| [c[0], c[1], c[2]])
+                        .collect();
                     custom::palette_from_rgb(&triples)
                 }
                 _ => return Err(format!("unknown palette source: {palette_source}")),

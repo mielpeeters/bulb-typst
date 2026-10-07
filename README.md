@@ -61,19 +61,19 @@ Tonal pre-pass (gamma / contrast / brightness):
 
 ### Parameters
 
-| Parameter           | Default      | Description                                                                                                                                                                                                                                                      |
-| ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path` (positional) | -            | `path` object that resolves to a JPEG or PNG image.                                                                                                                                                                                                              |
-| `colors`            | `"rgb"`      | Output colours. `"bw"` (black & white), `"rgb"` (uniform levels per channel, see `levels`), an integer >= 2 (generate that many colours from the image), a preset name (`"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`), or an array of >= 2 colours |
+| Parameter           | Default      | Description                                                                                                                                                                                                                                                                    |
+| ------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `path` (positional) | -            | `path` object that resolves to a JPEG or PNG image.                                                                                                                                                                                                                            |
+| `colors`            | `"rgb"`      | Output colours. `"bw"` (black & white), `"rgb"` (uniform levels per channel, see `levels`), an integer >= 2 (generate that many colours from the image), a preset name (`"gameboy"`, `"nes"`, `"cga"`, `"pico8"`, `"mac"`, `"c64"`), or an array of >= 2 colours               |
 | `method`            | `"bayer8x8"` | Dither method. Ordered: `"bayer2x2"`, `"bayer4x4"`, `"bayer8x8"`, `"cluster4"`, `"cluster6"`, `"cluster8"`. Error diffusion: `"floyd-steinberg"` (or `"floyd"`), `"atkinson"`, `"jarvis"`, `"stucki"`, `"burkes"`, `"sierra"`, `"sierra-two-row"`, `"sierra-lite"`, `"simple"` |
-| `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                                                                                                                                                                                   |
-| `filter`            | `"nearest"`  | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality)                                                                                                                                |
-| `levels`            | `3`          | Colour levels per channel (`colors: "rgb"` only)                                                                                                                                                                                                                 |
-| `hull-weight`       | `50.0`       | Balance between convex hull coverage and low average error when generating a palette (`colors: <int>` only). See [Hull weight](#hull-weight)                                                                                                                    |
-| `transparent`       | `true`       | Dither the alpha channel to fully on or off (images with an alpha channel only)                                                                                                                                                                                  |
-| `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                                                                                                                                                                     |
-| `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                                                                                                                                                                           |
-| `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                                                                                                                                                                      |
+| `size`              | `none`       | Max pixel size of the longest axis. `none` keeps original size                                                                                                                                                                                                                 |
+| `filter`            | `"nearest"`  | Resize filter: `"nearest"`, `"triangle"`, `"catmull-rom"`, `"gaussian"`, `"lanczos3"` (nearest fastest, lanczos3 highest quality)                                                                                                                                              |
+| `levels`            | `3`          | Colour levels per channel (`colors: "rgb"` only)                                                                                                                                                                                                                               |
+| `hull-weight`       | `50.0`       | Balance between convex hull coverage and low average error when generating a palette (`colors: <int>` only). See [Hull weight](#hull-weight)                                                                                                                                   |
+| `transparent`       | `true`       | Dither the alpha channel to fully on or off (images with an alpha channel only)                                                                                                                                                                                                |
+| `gamma`             | `1.0`        | Gamma correction applied before dithering (must be positive)                                                                                                                                                                                                                   |
+| `contrast`          | `1.0`        | Contrast multiplier around midgrey (`1.0` = no change)                                                                                                                                                                                                                         |
+| `brightness`        | `0.0`        | Additive brightness offset in `[-1.0, 1.0]`                                                                                                                                                                                                                                    |
 
 ### Hull weight
 
@@ -106,7 +106,7 @@ With `hull-weight: 0` most of the palette ends up in the middle of the cloud, as
 
 <img alt="dithered image with low hull weight" src="./docs/hull/noise-output.png">
 
-The default of `50` sits in between. You can increase it if small colourful details look dull, or decrease it if flat areas look too noisy. Both examples use `colors: 16`, `method: "floyd"` and `size: 400`, the source is in [`docs/hull.typ`](./docs/hull.typ).
+The default of `50` sits in between. You can increase it if small colourful details look dull, or decrease it if flat areas look too noisy.
 
 ## Examples
 
@@ -135,4 +135,9 @@ Here's what it looks like in practice:
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/given-palette-dark.png">
   <img alt="dithered image using user-defined palette" src="./docs/assets/given-palette-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/hull-dark.png">
+  <img alt="dithered image using user-defined palette" src="./docs/assets/hull-light.png">
 </picture>

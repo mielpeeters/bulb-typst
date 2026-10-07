@@ -5,7 +5,7 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.3.0": dither
+  #import "@local/bulb:0.4.0": dither
 
   #grid(
     columns: (1fr, 1fr),
@@ -19,14 +19,12 @@
         dither(
           path("koln.jpg"),
           size: 200,
-          method: "bayer4",
-          colors: 15,
+          method: "floyd",
+          colors: 12,
         ),
-        // better results in pngs, svgs
-        scaling: "pixelated",
         width: 100%
       ),
-      caption: [Bayer8x8 dithering matrix \ with *generated* palette],
+      caption: [Floyd-Steinberg diffusion dithering \ with *generated* palette],
     )
   )
   ```,

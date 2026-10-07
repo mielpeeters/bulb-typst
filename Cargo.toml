@@ -1,6 +1,6 @@
 [package]
 name = "bulb-typst"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 
 [lib]
@@ -14,7 +14,7 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-bulb-dither = { version = "4" }
+bulb-dither = { version = "6.1.0" }
 wasm-minimal-protocol = "0.2"
 image = { version = "0.25.10", default-features = false, features = [
     "png",
@@ -25,3 +25,4 @@ fast_image_resize = { version = "6", default-features = false, features = [
     "std",
     "only_u8x4",
 ] }
+minicbor = { version = "2.3.0", features = ["derive", "alloc", "half"] }

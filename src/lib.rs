@@ -1,15 +1,19 @@
 use std::io::Cursor;
 
 use bulb_dither::{
-    DitherMethod, adjust, custom,
-    ordered::{self, OrderedOptions},
-    palette::{self, DitherOptions, PaletteMethod},
-    presets::Preset,
+    Method,
+    adjust::{self, Adjust},
+    diffusion::Kernel,
+    ordered::Matrix,
+    palette::{self, ExtractOptions, Preset},
+    quantize::{KnollLut, Levels},
 };
 use fast_image_resize::images::Image;
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
 use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
 use image::{DynamicImage, GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
+use minicbor::data::Type;
+use minicbor::{Decode, Decoder, decode::Error};
 use wasm_minimal_protocol::*;
 use zune_png::PngDecoder;
 use zune_png::zune_core::colorspace::ColorSpace;
@@ -17,39 +21,98 @@ use zune_png::zune_core::options::DecoderOptions;
 
 initiate_protocol!();
 
-const HEADER_LEN: usize = 38;
+/// Options sent by `typst/bulb.typ` as a CBOR array, in field order.
+#[derive(Decode)]
+struct Options {
+    #[n(0)]
+    colors: Colors,
+    #[n(1)]
+    levels: u32,
+    #[cbor(n(2), decode_with = "decode_method")]
+    method: Method,
+    #[cbor(n(3), decode_with = "decode_filter")]
+    filter: ResizeAlg,
+    #[n(4)]
+    size: Option<u32>,
+    #[n(5)]
+    transparent: bool,
+    #[n(6)]
+    gamma: f64,
+    #[n(7)]
+    contrast: f64,
+    #[n(8)]
+    brightness: f64,
+    #[n(9)]
+    hull_weight: f64,
+}
 
-fn decode_method(id: u8) -> Result<DitherMethod, String> {
-    match id {
-        0 => Ok(DitherMethod::Bayer2x2),
-        1 => Ok(DitherMethod::Bayer4x4),
-        2 => Ok(DitherMethod::Bayer8x8),
-        3 => Ok(DitherMethod::Cluster4),
-        4 => Ok(DitherMethod::Cluster6),
-        5 => Ok(DitherMethod::Cluster8),
-        _ => Err(format!("unknown dither method: {id}")),
+/// The `colors` argument of `dither` in `typst/bulb.typ`.
+enum Colors {
+    Bw,
+    Rgb,
+    Extract(usize),
+    Preset(Preset),
+    Custom(Vec<[u8; 3]>),
+}
+
+impl<'b, C> Decode<'b, C> for Colors {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, Error> {
+        match d.datatype()? {
+            Type::U8 | Type::U16 | Type::U32 | Type::U64 => Ok(Self::Extract(d.u32()? as usize)),
+            Type::String => Ok(match d.str()? {
+                "bw" => Self::Bw,
+                "rgb" => Self::Rgb,
+                "gameboy" => Self::Preset(Preset::GameBoy),
+                "nes" => Self::Preset(Preset::Nes),
+                "cga" => Self::Preset(Preset::Cga),
+                "pico8" => Self::Preset(Preset::Pico8),
+                "mac" => Self::Preset(Preset::Mac),
+                "c64" => Self::Preset(Preset::C64),
+                other => {
+                    return Err(Error::message(format!(
+                        "unknown colors: {other:?}, expected \"bw\", \"rgb\" or a preset (\"gameboy\", \"nes\", \"cga\", \"pico8\", \"mac\", \"c64\")"
+                    )));
+                }
+            }),
+            Type::Array | Type::ArrayIndef => d.decode_with(ctx).map(Self::Custom),
+            t => {
+                Err(Error::type_mismatch(t)
+                    .with_message("colors must be a string, integer or array"))
+            }
+        }
     }
 }
 
-fn decode_palette_method(id: u8) -> Result<PaletteMethod, String> {
-    match id {
-        0 => Ok(PaletteMethod::Hybrid),
-        1 => Ok(PaletteMethod::Fps),
-        2 => Ok(PaletteMethod::Kmeans),
-        _ => Err(format!("unknown palette method: {id}")),
-    }
+fn decode_method<Ctx>(d: &mut Decoder<'_>, _: &mut Ctx) -> Result<Method, Error> {
+    Ok(match d.str()? {
+        "bayer2" | "bayer2x2" => Method::Ordered(Matrix::Bayer2),
+        "bayer4" | "bayer4x4" => Method::Ordered(Matrix::Bayer4),
+        "bayer8" | "bayer8x8" => Method::Ordered(Matrix::Bayer8),
+        "cluster4" => Method::Ordered(Matrix::Cluster4),
+        "cluster6" => Method::Ordered(Matrix::Cluster6),
+        "cluster8" => Method::Ordered(Matrix::Cluster8),
+        "floyd-steinberg" | "floyd" => Method::Diffusion(Kernel::FloydSteinberg),
+        "atkinson" => Method::Diffusion(Kernel::Atkinson),
+        "jarvis" => Method::Diffusion(Kernel::Jarvis),
+        "stucki" => Method::Diffusion(Kernel::Stucki),
+        "burkes" => Method::Diffusion(Kernel::Burkes),
+        "sierra" => Method::Diffusion(Kernel::Sierra),
+        "sierra-two-row" => Method::Diffusion(Kernel::SierraTwoRow),
+        "sierra-lite" => Method::Diffusion(Kernel::SierraLite),
+        "simple" => Method::Diffusion(Kernel::Simple),
+        other => return Err(Error::message(format!("unknown method: {other:?}"))),
+    })
 }
 
-fn decode_preset(id: u8) -> Result<Preset, String> {
-    match id {
-        0 => Ok(Preset::GameBoy),
-        1 => Ok(Preset::Nes),
-        2 => Ok(Preset::Cga),
-        3 => Ok(Preset::Pico8),
-        4 => Ok(Preset::Mac),
-        5 => Ok(Preset::C64),
-        _ => Err(format!("unknown preset: {id}")),
-    }
+fn decode_filter<Ctx>(d: &mut Decoder<'_>, _: &mut Ctx) -> Result<ResizeAlg, Error> {
+    Ok(match d.str()? {
+        "nearest" => ResizeAlg::Nearest,
+        "triangle" => ResizeAlg::Convolution(FilterType::Bilinear),
+        "catmull-rom" => ResizeAlg::Convolution(FilterType::CatmullRom),
+        "gaussian" => ResizeAlg::Convolution(FilterType::Gaussian),
+        "lanczos3" => ResizeAlg::Convolution(FilterType::Lanczos3),
+        other => return Err(Error::message(format!("unknown filter: {other:?}"))),
+    })
 }
 
 fn load_image(bytes: &[u8]) -> Result<DynamicImage, String> {
@@ -93,26 +156,15 @@ fn expand_luma_a_to_rgba(src: &[u8]) -> Vec<u8> {
     out
 }
 
-fn decode_filter(id: u8) -> Result<fast_image_resize::ResizeAlg, String> {
-    match id {
-        0 => Ok(ResizeAlg::Nearest),
-        1 => Ok(ResizeAlg::Convolution(FilterType::Bilinear)),
-        2 => Ok(ResizeAlg::Convolution(FilterType::CatmullRom)),
-        3 => Ok(ResizeAlg::Convolution(FilterType::Gaussian)),
-        4 => Ok(ResizeAlg::Convolution(FilterType::Lanczos3)),
-        _ => Err(format!("unknown resize filter: {id}")),
-    }
-}
-
 fn resize(
     img: DynamicImage,
-    max_size: u32,
-    alg: fast_image_resize::ResizeAlg,
+    max_size: Option<u32>,
+    alg: ResizeAlg,
 ) -> Result<DynamicImage, String> {
     let (w, h) = (img.width(), img.height());
-    if max_size == 0 || (w <= max_size && h <= max_size) {
+    let Some(max_size) = max_size.filter(|&m| w > m || h > m) else {
         return Ok(img);
-    }
+    };
     let (nw, nh) = if w >= h {
         (
             max_size,
@@ -177,175 +229,78 @@ fn encode_png_luma(img: &GrayImage) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
-fn read_u32_le(buf: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap())
-}
-
-fn read_i32_le(buf: &[u8], offset: usize) -> i32 {
-    i32::from_le_bytes(buf[offset..offset + 4].try_into().unwrap())
-}
-
-const FIXED_SCALE: f32 = 10_000.0;
-
-fn read_fixed(buf: &[u8], offset: usize) -> f32 {
-    read_i32_le(buf, offset) as f32 / FIXED_SCALE
-}
-
-// Negative encoded value signals None; valid threshold is >= 0.
-fn read_optional_fixed(buf: &[u8], offset: usize) -> Option<f32> {
-    let raw = read_i32_le(buf, offset);
-    if raw < 0 {
-        None
-    } else {
-        Some(raw as f32 / FIXED_SCALE)
+fn dither_palette(
+    mut rgba: RgbaImage,
+    pal: &[[f32; 3]],
+    method: Method,
+    dither_alpha: bool,
+) -> Result<Vec<u8>, String> {
+    if pal.len() < 2 {
+        return Err(format!(
+            "palette too small ({} colours, need >= 2)",
+            pal.len()
+        ));
     }
+    match method {
+        // Knoll mixes more than two colours per pattern, which only
+        // ordered dithering can use.
+        Method::Ordered(_) => {
+            method.dither(&mut rgba, &KnollLut::<16>::new(pal), dither_alpha);
+        }
+        Method::Diffusion(_) => {
+            method.dither(&mut rgba, pal, dither_alpha);
+        }
+    }
+    encode_png_rgba(&rgba)
 }
 
-/// Unified dither function.
-///
-/// Header (38 bytes):
-///   [0]:      colour target (0=bw, 1=rgb, 2=palette)
-///   [1]:      dither_method_id
-///   [2..6]:   max_size u32 LE (0 = no resize)
-///   [6..10]:  param1 u32 LE (rgb: levels, palette: k)
-///   [10..14]: param2 u32 LE (palette: n_accent)
-///   [14]:     palette_method_id
-///   [15]:     flags (bit 0 = linear_light, bit 1 = perceptual_cap, bit 2 = transparency, bits 4..7 = resize filter id)
-///   All four floats below are i32 LE fixed-point: stored = round(value * FIXED_SCALE).
-///   [16..20]: gamma
-///   [20..24]: contrast
-///   [24..28]: brightness
-///   [28..32]: edge_threshold (negative = None, >= 0 = Some)
-///   [32]:     palette source (0=extract, 1=preset, 2=custom)
-///   [33]:     preset id (0..=5, matches Preset enum order)
-///   [34..38]: custom_palette_len u32 LE (number of RGB triples)
-///   [38..38+3*N]: custom palette bytes (R,G,B u8 triples), only when palette source = 2
-///   [...]:    image bytes
+/// Dither `image` (PNG or JPEG bytes) with the CBOR-encoded [`Options`].
 ///
 /// Returns PNG bytes.
 #[wasm_func]
-fn dither(args: &[u8]) -> Result<Vec<u8>, String> {
-    if args.len() < HEADER_LEN + 1 {
-        return Err(format!(
-            "input too short: need {HEADER_LEN}-byte header + image data"
-        ));
-    }
-
-    let target = args[0];
-    let method = decode_method(args[1])?;
-    let max_size = read_u32_le(args, 2);
-    let flags = args[15];
-    let filter = decode_filter((flags >> 4) & 0b0111)?;
-    let adjust_opts = adjust::Adjust {
-        gamma: read_fixed(args, 16),
-        contrast: read_fixed(args, 20),
-        brightness: read_fixed(args, 24),
+fn dither(options: &[u8], image: &[u8]) -> Result<Vec<u8>, String> {
+    let opts: Options = minicbor::decode(options).map_err(|e| format!("invalid options: {e}"))?;
+    let method = opts.method;
+    let dither_alpha = opts.transparent;
+    let adjust_opts = Adjust {
+        gamma: opts.gamma as f32,
+        contrast: opts.contrast as f32,
+        brightness: opts.brightness as f32,
     };
-    let edge_threshold = read_optional_fixed(args, 28);
 
-    let palette_source = args[32];
-    let custom_palette_len = read_u32_le(args, 34) as usize;
-    let custom_palette_bytes = 3 * custom_palette_len;
-    let image_offset = HEADER_LEN + custom_palette_bytes;
-    if args.len() < image_offset + 1 {
-        return Err(format!(
-            "input too short: header + {custom_palette_bytes}-byte palette block + image data expected"
-        ));
+    let img = resize(load_image(image)?, opts.size, opts.filter)?;
+
+    // Grayscale keeps its own path to output a Luma8 PNG when alpha is dropped.
+    if let Colors::Bw = opts.colors {
+        let src = dither_alpha.then(|| img.to_rgba8());
+        let mut rgba = gray_to_rgba(&img.into_luma8(), &src);
+        adjust::apply(&mut rgba, adjust_opts);
+        method.dither(&mut rgba, &Levels::new(2), dither_alpha);
+        return if dither_alpha {
+            encode_png_rgba(&rgba)
+        } else {
+            encode_png_luma(&rgba_to_luma(&rgba))
+        };
     }
 
-    let img = load_image(&args[image_offset..])?;
-    let img = resize(img, max_size, filter)?;
-
-    match target {
-        // BW: grayscale + 2 levels, output as Luma8 PNG
-        0 => {
-            let src = (flags & 4 != 0).then(|| img.to_rgba8());
-            let gray = img.into_luma8();
-            let mut rgba = gray_to_rgba(&gray, &src);
-            adjust::apply(&mut rgba, adjust_opts);
-            ordered::dither_cpu(
-                &mut rgba,
-                OrderedOptions {
-                    method,
-                    levels: 2,
-                    edge_threshold,
-                    dither_alpha: flags & 4 != 0,
-                },
-            );
-            if flags & 4 != 0 {
-                encode_png_rgba(&rgba)
-            } else {
-                let luma = rgba_to_luma(&rgba);
-                encode_png_luma(&luma)
-            }
-        }
-        // RGB: configurable levels per channel
-        1 => {
-            let mut rgba = img.into_rgba8();
-            adjust::apply(&mut rgba, adjust_opts);
-            let levels = read_u32_le(args, 6);
-            ordered::dither_cpu(
-                &mut rgba,
-                OrderedOptions {
-                    method,
-                    levels,
-                    edge_threshold,
-                    dither_alpha: flags & 4 != 0,
-                },
-            );
+    let mut rgba = img.into_rgba8();
+    adjust::apply(&mut rgba, adjust_opts);
+    match opts.colors {
+        Colors::Bw => unreachable!(),
+        Colors::Rgb => {
+            method.dither(&mut rgba, &Levels::new(opts.levels), dither_alpha);
             encode_png_rgba(&rgba)
         }
-        // Palette
-        2 => {
-            let mut rgba = img.into_rgba8();
-            adjust::apply(&mut rgba, adjust_opts);
-            let pal = match palette_source {
-                0 => {
-                    let k = read_u32_le(args, 6) as usize;
-                    let n_accent = read_u32_le(args, 10) as usize;
-                    let pal_method = decode_palette_method(args[14])?;
-                    let linear_light = flags & 1 != 0;
-                    let perceptual_cap = flags & 2 != 0;
-                    palette::extract_palette(
-                        &rgba,
-                        k,
-                        n_accent,
-                        10_000,
-                        pal_method,
-                        linear_light,
-                        perceptual_cap,
-                    )
-                }
-                1 => decode_preset(args[33])?.colors(),
-                2 => {
-                    let bytes = &args[HEADER_LEN..HEADER_LEN + custom_palette_bytes];
-                    let triples: Vec<[u8; 3]> = bytes
-                        .as_chunks::<3>()
-                        .0
-                        .iter()
-                        .map(|c| [c[0], c[1], c[2]])
-                        .collect();
-                    custom::palette_from_rgb(&triples)
-                }
-                _ => return Err(format!("unknown palette source: {palette_source}")),
+        Colors::Extract(colours) => {
+            let extract_opts = ExtractOptions {
+                colours,
+                hull_weight: opts.hull_weight as f32,
+                fast: true,
             };
-            if pal.len() < 2 {
-                return Err(format!(
-                    "palette too small ({} colours, need >= 2)",
-                    pal.len()
-                ));
-            }
-            let _ = palette::dither_palette(
-                &mut rgba,
-                &pal,
-                DitherOptions {
-                    method,
-                    edge_threshold,
-                    dither_alpha: flags & 4 != 0,
-                },
-            );
-            encode_png_rgba(&rgba)
+            let pal = palette::extract(&rgba, &extract_opts);
+            dither_palette(rgba, &pal, method, dither_alpha)
         }
-        _ => Err(format!("unknown colour target: {target}")),
+        Colors::Preset(preset) => dither_palette(rgba, &preset.colours(), method, dither_alpha),
+        Colors::Custom(rgb) => dither_palette(rgba, &palette::from_rgb(&rgb), method, dither_alpha),
     }
 }

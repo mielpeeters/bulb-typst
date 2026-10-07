@@ -4,14 +4,18 @@
 
 #doc(
   ```typ
-  #import "@local/bulb:0.3.0": dither
+  #import "@local/bulb:0.4.0": dither
 
   #figure(
     image(
       dither(
         path("tent.png"),
         size: 500,
-        colors: (green, rgb("#c1b38f"), "#1c2500", oklch(90%, 30%, 230deg)),
+        colors: (
+          white, rgb("#a1a14d"),
+          rgb("#6da9ee"), "#4d1515",
+          oklch(90%, 50%, 30deg)
+        ),
         method: "cluster4",
       ),
     ),
